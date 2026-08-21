@@ -9,7 +9,9 @@ const LOGO_PATH = path.join(process.cwd(), "public", "brand-logo.jpeg");
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://appliedaiml.com";
 
 function emailLogo() {
-  return `<img src="cid:${LOGO_CID}" alt="${COMPANY_NAME}" width="64" height="64" style="display:block;width:64px;height:64px;object-fit:contain;margin:0 auto;" />`;
+  // Use public URL for reliable inline display across email clients
+  const logoUrl = `${SITE_URL}/brand-logo.jpeg`;
+  return `<img src="${logoUrl}" alt="${COMPANY_NAME}" width="64" height="64" style="display:block;width:64px;height:64px;object-fit:contain;margin:0 auto;border-radius:8px;" />`;
 }
 
 let _cachedSmtp: { host: string; port: number; user: string; pass: string; from: string } | null = null;
@@ -137,7 +139,6 @@ async function sendMail(to: string, subject: string, html: string) {
       to,
       subject,
       html,
-      attachments: [{ filename: "brand-logo.jpeg", path: LOGO_PATH, cid: LOGO_CID }],
     });
     console.log("[Email] Sent to:", to, "Subject:", subject);
     return { success: true };
