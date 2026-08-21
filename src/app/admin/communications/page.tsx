@@ -285,6 +285,7 @@ function ReplyForm({ id, email, name, onReplySent }: { id: string; email: string
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [emailWarning, setEmailWarning] = useState("");
   const [error, setError] = useState("");
 
   const handleSend = async (e: React.FormEvent) => {
@@ -306,6 +307,7 @@ function ReplyForm({ id, email, name, onReplySent }: { id: string; email: string
         });
         onReplySent();
         setSent(true);
+        setEmailWarning(data.emailSent === false ? (data.message || "") : "");
         setSubject("");
         setMessage("");
       } else {
@@ -320,9 +322,14 @@ function ReplyForm({ id, email, name, onReplySent }: { id: string; email: string
 
   if (sent) {
     return (
-      <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
-        <p className="text-sm text-green-400">✓ Reply sent successfully to {email}</p>
-        <button onClick={() => setSent(false)} className="text-xs text-white/40 mt-2 hover:text-white/60">Send another</button>
+      <div className="space-y-2">
+        <div className="bg-green-500/10 border border-green-500/20 rounded-lg p-4">
+          <p className="text-sm text-green-400">✓ Reply saved for {email}</p>
+          {emailWarning && (
+            <p className="text-xs text-yellow-400/80 mt-1">{emailWarning}</p>
+          )}
+          <button onClick={() => { setSent(false); setEmailWarning(""); }} className="text-xs text-white/40 mt-2 hover:text-white/60">Send another</button>
+        </div>
       </div>
     );
   }

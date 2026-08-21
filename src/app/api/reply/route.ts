@@ -18,5 +18,15 @@ export async function POST(req: NextRequest) {
   const result = await sendReplyEmail(toEmail, toName || "User", subject, message);
   // Always save the reply record so admins can see what was sent (even if email failed)
   await addReply({ toEmail, toName: toName || "User", subject, message });
-  return NextResponse.json(result, { status: result.success ? 200 : 200 });
+
+  if (result.success) {
+    return NextResponse.json({ success: true, message: "Reply sent and saved." });
+  }
+  // Email failed but reply is saved — return success with a note
+  return NextResponse.json({
+    success: true,
+    emailSent: false,
+    message: "Reply saved. Email could not be sent (SMTP configuration issue).",
+    emailError: result.error,
+  });
 }

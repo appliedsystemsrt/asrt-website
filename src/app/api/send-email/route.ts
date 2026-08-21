@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addCommunication, addDemoRequest, getAdmin } from "@/lib/db";
+import { addDemoRequest, getAdmin } from "@/lib/db";
 import {
   sendContactNotification,
   sendDemoNotification,
@@ -27,19 +27,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (type === "demo") {
+    // addDemoRequest already inserts into the communications table
     await addDemoRequest(data);
-    await addCommunication({
-      name: data.name,
-      email: data.email,
-      phone: data.phone || "",
-      company: data.company || "",
-      city: data.city || "",
-      interest: data.interest ? `Demo request: ${data.interest}` : "Demo request",
-      message: data.message || "Requested a product demonstration.",
-      subscribeNewsletters: false,
-      subscribeArticles: false,
-      subscribeBlogs: false,
-    });
   }
 
   const admin = await getAdmin();
@@ -51,10 +40,12 @@ export async function POST(req: NextRequest) {
   }
 
   if (!isEmailConfigured()) {
-    console.log("[Email] Not configured. Notification would be sent for type:", type);
+    console.log("[Email] SMTP not configured. Data saved to database but emails not sent.");
+    // Return success so the form shows success — data is saved, just emails aren't sent
     return NextResponse.json({
-      success: false,
-      error: "Email service not configured. Add RESEND_API_KEY to .env.local",
+      success: true,
+      emailSent: false,
+      message: "Submission saved. Email notifications disabled (SMTP not configured).",
     });
   }
 
@@ -79,5 +70,5 @@ export async function POST(req: NextRequest) {
       break;
   }
 
-  return NextResponse.json({ success: result.success, error: result.error });
+  return NextResponse.json({ success: true, emailSent: result.success, error: result.error });
 }
