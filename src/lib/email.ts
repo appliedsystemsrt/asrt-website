@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer";
 import path from "path";
 import { getCommunications, getSmtpConfig, getSubscribers } from "./db";
+import { isSupabaseConfigured, getSupabaseAdmin } from "./supabase";
 
 const COMPANY_NAME = "Applied Systems Research and Technology OPC Private Ltd";
 const LOGO_CID = "asrt-brand-logo";
@@ -11,30 +12,67 @@ function emailLogo() {
   return `<img src="cid:${LOGO_CID}" alt="${COMPANY_NAME}" width="64" height="64" style="display:block;width:64px;height:64px;object-fit:contain;margin:0 auto;" />`;
 }
 
-// SMTP configuration - use admin settings first, then environment variables
-function getSmtpSettings() {
-  // Vercel has no persistent writable filesystem; use its environment values.
+let _cachedSmtp: { host: string; port: number; user: string; pass: string; from: string } | null = null;
+let _smtpChecked = false;
+
+// SMTP configuration - reads from Supabase smtp_settings table, then env vars, then local file
+async function getSmtpSettings() {
+  // Return cached value if already loaded
+  if (_smtpChecked) return _cachedSmtp;
+
+  // 1. Try Supabase smtp_settings table (where Admin → Email Setup saves)
+  if (isSupabaseConfigured()) {
+    try {
+      const { data } = await getSupabaseAdmin()
+        .from("smtp_settings")
+        .select("host, port, username, password_encrypted, from_email")
+        .eq("status", "active")
+        .limit(1)
+        .maybeSingle();
+      if (data?.username && data?.password_encrypted) {
+        _cachedSmtp = {
+          host: data.host || "smtp.gmail.com",
+          port: data.port || 587,
+          user: data.username,
+          pass: data.password_encrypted,
+          from: data.from_email || data.username,
+        };
+        _smtpChecked = true;
+        return _cachedSmtp;
+      }
+    } catch (e) {
+      console.warn("[Email] Failed to read SMTP from Supabase:", e);
+    }
+  }
+
+  // 2. Try local file (non-Vercel only)
   const dbConfig = process.env.VERCEL ? null : getSmtpConfig();
   if (dbConfig?.user && dbConfig.pass) {
-    return {
+    _cachedSmtp = {
       host: dbConfig.host,
       port: dbConfig.port,
       user: dbConfig.user,
       pass: dbConfig.pass,
       from: dbConfig.from,
     };
+    _smtpChecked = true;
+    return _cachedSmtp;
   }
 
+  // 3. Try environment variables
   if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    return {
+    _cachedSmtp = {
       host: process.env.SMTP_HOST || "smtp.gmail.com",
       port: parseInt(process.env.SMTP_PORT || "587"),
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
     };
+    _smtpChecked = true;
+    return _cachedSmtp;
   }
 
+  _smtpChecked = true;
   return null;
 }
 
@@ -42,7 +80,8 @@ let transporter: nodemailer.Transporter | null = null;
 let transporterKey = "";
 
 function getTransporter() {
-  const smtpSettings = getSmtpSettings();
+  // Use cached settings synchronously (populated by async init)
+  const smtpSettings = _cachedSmtp;
   if (!smtpSettings?.user || !smtpSettings.pass) {
     console.log("[Email] SMTP not configured. Set SMTP_USER and SMTP_PASS in .env.local");
     return null;
@@ -73,12 +112,20 @@ function getTransporter() {
 }
 
 export function isEmailConfigured() {
-  const smtpSettings = getSmtpSettings();
-  return !!smtpSettings?.user && !!smtpSettings.pass;
+  // Check cached value first
+  if (_smtpChecked) return !!_cachedSmtp?.user && !!_cachedSmtp?.pass;
+  // Fallback sync check for env vars
+  if (process.env.SMTP_USER && process.env.SMTP_PASS) return true;
+  return false;
+}
+
+/** Call once at startup to load SMTP settings from Supabase */
+export async function initSmtpSettings() {
+  await getSmtpSettings();
 }
 
 async function sendMail(to: string, subject: string, html: string) {
-  const smtpSettings = getSmtpSettings();
+  const smtpSettings = await getSmtpSettings();
   const transport = getTransporter();
   if (!transport || !smtpSettings?.user || !smtpSettings.pass) {
     console.log("[Email] Not configured. Would send to:", to, "Subject:", subject);
