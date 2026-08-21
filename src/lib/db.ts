@@ -1,7 +1,15 @@
 import fs from "fs";
 import path from "path";
+import { getSupabaseAdmin } from "./supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
+
+function useSupabase() {
+  return Boolean(
+    (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -166,7 +174,12 @@ const DEFAULT_PRODUCTS: Product[] = [
 // ─── CRUD Operations ───
 
 // Teams
-export function getTeams(): TeamMember[] {
+export async function getTeams(): Promise<TeamMember[]> {
+  if (useSupabase()) {
+    const { data, error } = await getSupabaseAdmin().from("teams").select("*").order("created_at", { ascending: true });
+    if (error) throw error;
+    return (data || []).map((row: any) => ({ id: String(row.id), name: row.name, role: row.metadata?.role || "", bio: row.metadata?.bio || row.description || "", image: row.metadata?.image || "", createdAt: row.created_at }));
+  }
   return readJSON<TeamMember[]>("teams.json", DEFAULT_TEAMS);
 }
 
@@ -174,7 +187,12 @@ export function saveTeams(teams: TeamMember[]) {
   writeJSON("teams.json", teams);
 }
 
-export function addTeam(member: Omit<TeamMember, "id" | "createdAt">): TeamMember {
+export async function addTeam(member: Omit<TeamMember, "id" | "createdAt">): Promise<TeamMember> {
+  if (useSupabase()) {
+    const { data, error } = await getSupabaseAdmin().from("teams").insert({ name: member.name, slug: `${member.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`, description: member.bio, metadata: member }).select().single();
+    if (error) throw error;
+    return { ...member, id: String(data.id), createdAt: data.created_at };
+  }
   const teams = getTeams();
   const newMember: TeamMember = {
     ...member,
@@ -186,7 +204,12 @@ export function addTeam(member: Omit<TeamMember, "id" | "createdAt">): TeamMembe
   return newMember;
 }
 
-export function deleteTeam(id: string): boolean {
+export async function deleteTeam(id: string): Promise<boolean> {
+  if (useSupabase()) {
+    const { error, count } = await getSupabaseAdmin().from("teams").delete({ count: "exact" }).eq("id", id);
+    if (error) throw error;
+    return Boolean(count);
+  }
   const teams = getTeams();
   const filtered = teams.filter((t) => t.id !== id);
   if (filtered.length === teams.length) return false;
@@ -195,7 +218,12 @@ export function deleteTeam(id: string): boolean {
 }
 
 // Products
-export function getProducts(): Product[] {
+export async function getProducts(): Promise<Product[]> {
+  if (useSupabase()) {
+    const { data, error } = await getSupabaseAdmin().from("products").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map((row: any) => ({ ...row.metadata, id: String(row.id), name: row.name, slug: row.slug, description: row.description || "", image: row.metadata?.image || "", tags: row.metadata?.tags || [], createdAt: row.created_at }));
+  }
   return readJSON<Product[]>("products.json", DEFAULT_PRODUCTS);
 }
 
@@ -203,7 +231,12 @@ export function saveProducts(products: Product[]) {
   writeJSON("products.json", products);
 }
 
-export function addProduct(product: Omit<Product, "id" | "createdAt">): Product {
+export async function addProduct(product: Omit<Product, "id" | "createdAt">): Promise<Product> {
+  if (useSupabase()) {
+    const { data, error } = await getSupabaseAdmin().from("products").insert({ name: product.name, slug: product.slug, description: product.description, metadata: product }).select().single();
+    if (error) throw error;
+    return { ...product, id: String(data.id), createdAt: data.created_at };
+  }
   const products = getProducts();
   const newProduct: Product = {
     ...product,
@@ -215,7 +248,12 @@ export function addProduct(product: Omit<Product, "id" | "createdAt">): Product 
   return newProduct;
 }
 
-export function deleteProduct(id: string): boolean {
+export async function deleteProduct(id: string): Promise<boolean> {
+  if (useSupabase()) {
+    const { error, count } = await getSupabaseAdmin().from("products").delete({ count: "exact" }).eq("id", id);
+    if (error) throw error;
+    return Boolean(count);
+  }
   const products = getProducts();
   const filtered = products.filter((p) => p.id !== id);
   if (filtered.length === products.length) return false;
@@ -224,7 +262,12 @@ export function deleteProduct(id: string): boolean {
 }
 
 // Blogs
-export function getBlogs(): Blog[] {
+export async function getBlogs(): Promise<Blog[]> {
+  if (useSupabase()) {
+    const { data, error } = await getSupabaseAdmin().from("blogs").select("*").order("created_at", { ascending: false });
+    if (error) throw error;
+    return (data || []).map((row: any) => ({ ...row.metadata, id: String(row.id), title: row.title, excerpt: row.excerpt || "", content: typeof row.content === "string" ? row.content : row.metadata?.content || "", coverImage: row.cover_image_url || "", createdAt: row.created_at, updatedAt: row.updated_at || row.created_at, readTime: row.metadata?.readTime || 1, type: row.metadata?.type || "blog", author: row.metadata?.author || "ASRT Team", pdfUrl: row.metadata?.pdfUrl || "" }));
+  }
   return readJSON<Blog[]>("blogs.json", []);
 }
 
@@ -232,7 +275,13 @@ export function saveBlogs(blogs: Blog[]) {
   writeJSON("blogs.json", blogs);
 }
 
-export function addBlog(blog: Omit<Blog, "id" | "createdAt" | "updatedAt" | "readTime">): Blog {
+export async function addBlog(blog: Omit<Blog, "id" | "createdAt" | "updatedAt" | "readTime">): Promise<Blog> {
+  if (useSupabase()) {
+    const readTime = Math.max(1, Math.ceil(blog.content.replace(/<[^>]*>/g, "").split(/\s+/).length / 200));
+    const { data, error } = await getSupabaseAdmin().from("blogs").insert({ title: blog.title, slug: `${blog.title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`, excerpt: blog.excerpt, content: JSON.stringify(blog.content), cover_image_url: blog.coverImage, status: "published", metadata: { type: blog.type, author: blog.author, pdfUrl: blog.pdfUrl, readTime } }).select().single();
+    if (error) throw error;
+    return { ...blog, id: String(data.id), readTime, createdAt: data.created_at, updatedAt: data.updated_at || data.created_at };
+  }
   const blogs = getBlogs();
   const wordCount = blog.content.replace(/<[^>]*>/g, "").split(/\s+/).length;
   const newBlog: Blog = {
@@ -247,7 +296,12 @@ export function addBlog(blog: Omit<Blog, "id" | "createdAt" | "updatedAt" | "rea
   return newBlog;
 }
 
-export function deleteBlog(id: string): boolean {
+export async function deleteBlog(id: string): Promise<boolean> {
+  if (useSupabase()) {
+    const { error, count } = await getSupabaseAdmin().from("blogs").delete({ count: "exact" }).eq("id", id);
+    if (error) throw error;
+    return Boolean(count);
+  }
   const blogs = getBlogs();
   const filtered = blogs.filter((b) => b.id !== id);
   if (filtered.length === blogs.length) return false;

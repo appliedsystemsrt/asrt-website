@@ -13,7 +13,8 @@ function emailLogo() {
 
 // SMTP configuration - use admin settings first, then environment variables
 function getSmtpSettings() {
-  const dbConfig = getSmtpConfig();
+  // Vercel has no persistent writable filesystem; use its environment values.
+  const dbConfig = process.env.VERCEL ? null : getSmtpConfig();
   if (dbConfig?.user && dbConfig.pass) {
     return {
       host: dbConfig.host,
