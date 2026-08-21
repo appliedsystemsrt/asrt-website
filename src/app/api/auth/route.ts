@@ -3,6 +3,7 @@ import { getAdmin } from "@/lib/db";
 import {
   getSupabaseAdminUser,
   isSupabaseConfigured,
+  upgradeAdminPassword,
   verifyAdminPassword,
 } from "@/lib/supabase";
 
@@ -37,6 +38,9 @@ export async function POST(req: NextRequest) {
           { success: false, error: "Invalid password" },
           { status: 401 }
         );
+      }
+      if (!admin.password_hash.includes(":")) {
+        await upgradeAdminPassword(admin.id, password);
       }
       const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
       const response = NextResponse.json({ success: true, token });

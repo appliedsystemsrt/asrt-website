@@ -37,11 +37,18 @@ export function hashAdminPassword(password: string) {
 
 export function verifyAdminPassword(password: string, storedHash: string) {
   const [salt, hash] = storedHash.split(":");
-  if (!salt || !hash) return false;
-  return crypto.timingSafeEqual(
-    Buffer.from(hash, "hex"),
-    crypto.scryptSync(password, salt, 64)
-  );
+  if (!salt || !hash) return storedHash === password;
+  const expected = Buffer.from(hash, "hex");
+  const actual = crypto.scryptSync(password, salt, 64);
+  return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
+}
+
+export async function upgradeAdminPassword(id: string, password: string) {
+  const { error } = await getSupabaseAdmin()
+    .from("admins")
+    .update({ password_hash: hashAdminPassword(password), updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) throw error;
 }
 
 export async function getSupabaseAdminUser() {
