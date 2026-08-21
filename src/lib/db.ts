@@ -4,10 +4,51 @@ import { getSupabaseAdmin } from "./supabase";
 
 const DATA_DIR = path.join(process.cwd(), "data");
 
+let _supabaseReady: boolean | null = null;
+
+async function isSupabaseReady(): Promise<boolean> {
+  if (_supabaseReady !== null) return _supabaseReady;
+  const envReady = Boolean(
+    (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+  if (!envReady) {
+    _supabaseReady = false;
+    return false;
+  }
+  try {
+    const { error } = await getSupabaseAdmin()
+      .from("communications")
+      .select("id")
+      .limit(1);
+    _supabaseReady = !error || !isTableMissingError(error);
+    if (!_supabaseReady) {
+      console.warn("[DB] Supabase tables not found — falling back to local JSON storage.");
+      console.warn("[DB] Run the SQL migration in Supabase SQL Editor to enable Supabase storage.");
+    }
+    return _supabaseReady;
+  } catch {
+    _supabaseReady = false;
+    return false;
+  }
+}
+
+/** Synchronous check — true only if env vars present (for callers that can't await) */
 function shouldUseSupabase() {
   return Boolean(
     (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL) &&
       process.env.SUPABASE_SERVICE_ROLE_KEY
+  );
+}
+
+function isTableMissingError(error: any): boolean {
+  if (!error) return false;
+  const msg = (error.message || error.details || error.hint || "").toLowerCase();
+  return (
+    msg.includes("does not exist") ||
+    msg.includes("relation \"public.") ||
+    msg.includes("not found") ||
+    error.code === "42P01"
   );
 }
 
@@ -201,7 +242,7 @@ const DEFAULT_PRODUCTS: Product[] = [
 // ─── Teams ───
 
 export async function getTeams(): Promise<TeamMember[]> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("teams")
       .select("*")
@@ -239,12 +280,10 @@ export async function getTeams(): Promise<TeamMember[]> {
 
 export function saveTeams(teams: TeamMember[]) {
   writeJSON("teams.json", teams);
-}
-
-export async function addTeam(
+}export async function addTeam(
   member: Omit<TeamMember, "id" | "createdAt">
 ): Promise<TeamMember> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("teams")
       .insert({
@@ -270,7 +309,7 @@ export async function addTeam(
 }
 
 export async function deleteTeam(id: string): Promise<boolean> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { error, count } = await getSupabaseAdmin()
       .from("teams")
       .delete({ count: "exact" })
@@ -288,7 +327,7 @@ export async function deleteTeam(id: string): Promise<boolean> {
 // ─── Products ───
 
 export async function getProducts(): Promise<Product[]> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("products")
       .select("*")
@@ -333,7 +372,7 @@ export function saveProducts(products: Product[]) {
 export async function addProduct(
   product: Omit<Product, "id" | "createdAt">
 ): Promise<Product> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("products")
       .insert({
@@ -359,7 +398,7 @@ export async function addProduct(
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { error, count } = await getSupabaseAdmin()
       .from("products")
       .delete({ count: "exact" })
@@ -377,7 +416,7 @@ export async function deleteProduct(id: string): Promise<boolean> {
 // ─── Blogs ───
 
 export async function getBlogs(): Promise<Blog[]> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("blogs")
       .select("*")
@@ -411,7 +450,7 @@ export function saveBlogs(blogs: Blog[]) {
 export async function addBlog(
   blog: Omit<Blog, "id" | "createdAt" | "updatedAt" | "readTime">
 ): Promise<Blog> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const readTime = Math.max(
       1,
       Math.ceil(
@@ -460,7 +499,7 @@ export async function addBlog(
 }
 
 export async function deleteBlog(id: string): Promise<boolean> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { error, count } = await getSupabaseAdmin()
       .from("blogs")
       .delete({ count: "exact" })
@@ -478,7 +517,7 @@ export async function deleteBlog(id: string): Promise<boolean> {
 // ─── Communications ───
 
 export async function getCommunications(): Promise<Communication[]> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .select("*")
@@ -510,7 +549,7 @@ export async function saveCommunications(comms: Communication[]) {
 export async function addCommunication(
   comm: Omit<Communication, "id" | "createdAt" | "read">
 ): Promise<Communication> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .insert({
@@ -551,7 +590,7 @@ export async function addCommunication(
 }
 
 export async function markCommunicationRead(id: string): Promise<boolean> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { error, count } = await getSupabaseAdmin()
       .from("communications")
       .update({ read: true })
@@ -570,7 +609,7 @@ export async function markCommunicationRead(id: string): Promise<boolean> {
 // ─── Subscribers ───
 
 export async function getSubscribers(): Promise<Subscriber[]> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .select("*")
@@ -601,7 +640,7 @@ export async function getSubscribers(): Promise<Subscriber[]> {
 export async function addSubscriber(
   sub: Omit<Subscriber, "id" | "createdAt">
 ): Promise<Subscriber> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data: existing } = await getSupabaseAdmin()
       .from("communications")
       .select("id")
@@ -663,7 +702,7 @@ export async function addSubscriber(
 // ─── Replies ───
 
 export async function getReplies(): Promise<ReplyRecord[]> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("replies")
       .select("*")
@@ -684,7 +723,7 @@ export async function getReplies(): Promise<ReplyRecord[]> {
 export async function addReply(
   reply: Omit<ReplyRecord, "id" | "createdAt">
 ): Promise<ReplyRecord> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("replies")
       .insert({
@@ -714,7 +753,7 @@ export async function addReply(
 // ─── Demo Requests ───
 
 export async function getDemoRequests(): Promise<DemoRequest[]> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .select("*")
@@ -739,7 +778,7 @@ export async function getDemoRequests(): Promise<DemoRequest[]> {
 export async function addDemoRequest(
   req: Omit<DemoRequest, "id" | "createdAt">
 ): Promise<DemoRequest> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .insert({
@@ -784,7 +823,7 @@ export function saveSmtpConfig(config: SmtpConfig): void {
 // ─── Admin ───
 
 export async function getAdmin(): Promise<AdminUser | null> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("admins")
       .select("id,email,name,password_hash,created_at")
@@ -805,7 +844,7 @@ export async function getAdmin(): Promise<AdminUser | null> {
 }
 
 export async function getAdminByEmail(email: string): Promise<AdminUser | null> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("admins")
       .select("id,email,name,password_hash,created_at")
@@ -831,7 +870,7 @@ export async function getAdminByEmail(email: string): Promise<AdminUser | null> 
 }
 
 export async function getAdmins(): Promise<AdminUser[]> {
-  if (shouldUseSupabase()) {
+  if (await isSupabaseReady()) {
     const { data, error } = await getSupabaseAdmin()
       .from("admins")
       .select("id,email,name,created_at");
