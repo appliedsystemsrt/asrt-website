@@ -39,23 +39,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  if (!isEmailConfigured()) {
-    console.log("[Email] SMTP not configured. Data saved to database but emails not sent.");
-    // Return success so the form shows success — data is saved, just emails aren't sent
-    return NextResponse.json({
-      success: true,
-      emailSent: false,
-      message: "Submission saved. Email notifications disabled (SMTP not configured).",
-    });
-  }
-
+  // Always try to send emails — don't short-circuit on isEmailConfigured()
+  // because the SMTP cache might not be loaded from Supabase yet
   let result: { success: boolean; error?: string } = {
     success: false,
-    error: "Invalid email type",
+    error: "Email type not handled",
   };
 
   switch (type) {
     case "contact":
+      // Notify admin + send confirmation to user
       result = await sendContactNotification(admin.email, data);
       if (data.email) {
         await sendContactConfirmation(data.email, data.name);
@@ -63,6 +56,7 @@ export async function POST(req: NextRequest) {
       break;
 
     case "demo":
+      // Notify admin + send confirmation to user
       result = await sendDemoNotification(admin.email, data);
       if (data.email) {
         await sendDemoConfirmation(data.email, data.name);
