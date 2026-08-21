@@ -1,5 +1,5 @@
 -- ============================================================
--- ASRT Website — Full Supabase schema
+-- ASRT Website — Full Supabase schema (safe for existing tables)
 -- Run once in Supabase SQL Editor.
 -- ============================================================
 
@@ -13,6 +13,11 @@ CREATE TABLE IF NOT EXISTS public.teams (
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
+-- Add columns that may be missing from a previously-created table
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS description text DEFAULT '';
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.teams ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
 -- 2. products ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.products (
@@ -24,6 +29,10 @@ CREATE TABLE IF NOT EXISTS public.products (
   created_at  timestamptz NOT NULL DEFAULT now(),
   updated_at  timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS description text DEFAULT '';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
 -- 3. blogs ──────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.blogs (
@@ -38,6 +47,13 @@ CREATE TABLE IF NOT EXISTS public.blogs (
   created_at       timestamptz NOT NULL DEFAULT now(),
   updated_at       timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.blogs ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE public.blogs ADD COLUMN IF NOT EXISTS excerpt text DEFAULT '';
+ALTER TABLE public.blogs ADD COLUMN IF NOT EXISTS content text DEFAULT '';
+ALTER TABLE public.blogs ADD COLUMN IF NOT EXISTS cover_image_url text DEFAULT '';
+ALTER TABLE public.blogs ADD COLUMN IF NOT EXISTS status text DEFAULT 'published';
+ALTER TABLE public.blogs ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.blogs ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
 -- 4. communications ────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.communications (
@@ -53,6 +69,17 @@ CREATE TABLE IF NOT EXISTS public.communications (
   metadata   jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+-- These ALTERs fix tables that were created without all columns
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS name text DEFAULT '';
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS email text DEFAULT '';
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS phone text DEFAULT '';
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS company text DEFAULT '';
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS city text DEFAULT '';
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS interest text DEFAULT '';
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS message text DEFAULT '';
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS read boolean DEFAULT false;
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
 -- 5. replies ───────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.replies (
@@ -60,6 +87,8 @@ CREATE TABLE IF NOT EXISTS public.replies (
   metadata   jsonb NOT NULL DEFAULT '{}'::jsonb,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.replies ADD COLUMN IF NOT EXISTS metadata jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.replies ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
 -- 6. admins ────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.admins (
@@ -70,6 +99,8 @@ CREATE TABLE IF NOT EXISTS public.admins (
   created_at    timestamptz NOT NULL DEFAULT now(),
   updated_at    timestamptz NOT NULL DEFAULT now()
 );
+ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS password_hash text DEFAULT '';
+ALTER TABLE public.admins ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 
 -- 7. smtp_settings ─────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS public.smtp_settings (
@@ -83,11 +114,6 @@ CREATE TABLE IF NOT EXISTS public.smtp_settings (
   created_at         timestamptz NOT NULL DEFAULT now(),
   updated_at         timestamptz NOT NULL DEFAULT now()
 );
-
--- Add metadata columns if they don't exist (for pre-existing tables)
-ALTER TABLE public.teams           ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
-ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
-ALTER TABLE public.replies         ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
 
 -- Storage bucket ───────────────────────────────────────────
 INSERT INTO storage.buckets (id, name, public)
