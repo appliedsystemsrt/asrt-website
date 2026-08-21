@@ -2,7 +2,6 @@ import fs from "fs";
 import path from "path";
 
 const DATA_DIR = path.join(process.cwd(), "data");
-
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) {
     fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -388,6 +387,11 @@ export interface AdminUser {
 export function getAdmin(): AdminUser | null {
   const admins = readJSON<AdminUser[]>("admins.json", []);
   return admins.length > 0 ? admins[0] : null;
+}
+
+export function getAdminByEmail(email: string): AdminUser | null {
+  const admins = readJSON<AdminUser[]>("admins.json", []);
+  return admins.find((admin) => admin.email.toLowerCase() === email.toLowerCase()) || null;
 }
 
 export function getAdmins(): AdminUser[] {

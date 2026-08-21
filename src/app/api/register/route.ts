@@ -18,17 +18,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Check if admin already registered
-  const existing = isSupabaseConfigured()
-    ? await getSupabaseAdminUser()
-    : getAdmin();
-  if (existing) {
-    return NextResponse.json(
-      { error: "An admin account already exists. Only one admin is allowed in this testing environment." },
-      { status: 409 }
-    );
-  }
-
   // Register admin
   const admin = isSupabaseConfigured()
     ? await registerSupabaseAdmin({

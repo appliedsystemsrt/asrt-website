@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAdmin } from "@/lib/db";
+import { getAdminByEmail, getAdmin } from "@/lib/db";
 import {
   getSupabaseAdminUser,
   isSupabaseConfigured,
@@ -7,15 +7,15 @@ import {
   verifyAdminPassword,
 } from "@/lib/supabase";
 
-const FALLBACK_EMAIL = "iitrmit@gmail.com";
-const FALLBACK_PASSWORD = "admin123";
+const FALLBACK_EMAIL = "appliedsystems.rt@gmail.com";
+const FALLBACK_PASSWORD = "Admin123";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const { email, password } = body;
 
   // Check fallback credentials
-  if (email === FALLBACK_EMAIL && password === FALLBACK_PASSWORD) {
+  if (!isSupabaseConfigured() && email === FALLBACK_EMAIL && password === FALLBACK_PASSWORD) {
     const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
     const response = NextResponse.json({ success: true, token });
     response.cookies.set("admin-token", token, {
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
   // Check the deployed Supabase admin when configured, otherwise use local JSON.
   if (isSupabaseConfigured()) {
-    const admin = await getSupabaseAdminUser();
+    const admin = await getSupabaseAdminUser(email);
     if (admin && admin.email === email) {
       const passwordValid = verifyAdminPassword(password, admin.password_hash);
       if (!passwordValid) {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       return response;
     }
   } else {
-    const admin = await getAdmin();
+    const admin = getAdminByEmail(email);
     if (admin && admin.email === email) {
       const passwordValid = admin.password === password;
       if (!passwordValid) {

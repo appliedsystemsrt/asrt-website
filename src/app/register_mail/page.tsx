@@ -152,6 +152,12 @@ export default function RegisterMailPage() {
             >
               Go to Admin Panel
             </a>
+            <button
+              onClick={() => setView("choose")}
+              className="mt-3 text-sm text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              Add another admin
+            </button>
           </div>
         </motion.div>
       </div>

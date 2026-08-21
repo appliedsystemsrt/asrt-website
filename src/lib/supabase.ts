@@ -51,12 +51,12 @@ export async function upgradeAdminPassword(id: string, password: string) {
   if (error) throw error;
 }
 
-export async function getSupabaseAdminUser() {
-  const { data, error } = await getSupabaseAdmin()
+export async function getSupabaseAdminUser(email?: string) {
+  let query = getSupabaseAdmin()
     .from("admins")
-    .select("id,email,password_hash,name,created_at")
-    .limit(1)
-    .maybeSingle();
+    .select("id,email,password_hash,name,created_at");
+  if (email) query = query.eq("email", email);
+  const { data, error } = await query.limit(1).maybeSingle();
   if (error) throw error;
   return data;
 }
@@ -77,4 +77,35 @@ export async function registerSupabaseAdmin(input: {
     .single();
   if (error) throw error;
   return data;
+}
+
+export async function saveSupabaseSmtpConfig(config: {
+  host: string;
+  port: number;
+  user: string;
+  pass: string;
+  from: string;
+}) {
+  const supabase = getSupabaseAdmin();
+  const existing = await supabase
+    .from("smtp_settings")
+    .select("id")
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+  if (existing.error) throw existing.error;
+
+  const values = {
+    host: config.host,
+    port: config.port,
+    username: config.user,
+    password_encrypted: config.pass,
+    from_email: config.from,
+    status: "active",
+    updated_at: new Date().toISOString(),
+  };
+  const result = existing.data
+    ? await supabase.from("smtp_settings").update(values).eq("id", existing.data.id)
+    : await supabase.from("smtp_settings").insert(values);
+  if (result.error) throw result.error;
 }
