@@ -207,7 +207,32 @@ export async function getTeams(): Promise<TeamMember[]> {
       .select("*")
       .order("created_at", { ascending: true });
     if (error) throw error;
-    return (data || []).map((row: any) => ({
+    const rows = data || [];
+    if (rows.length === 0) {
+      // Seed default team members into Supabase so they appear on the site
+      for (const member of DEFAULT_TEAMS) {
+        await getSupabaseAdmin().from("teams").insert({
+          name: member.name,
+          slug: `${member.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
+          description: member.bio,
+          metadata: { role: member.role, bio: member.bio, image: member.image },
+        });
+      }
+      // Re-fetch after seeding
+      const { data: seeded } = await getSupabaseAdmin()
+        .from("teams")
+        .select("*")
+        .order("created_at", { ascending: true });
+      return (seeded || []).map((row: any) => ({
+        id: String(row.id),
+        name: row.name,
+        role: row.metadata?.role || "",
+        bio: row.metadata?.bio || row.description || "",
+        image: row.metadata?.image || "",
+        createdAt: row.created_at,
+      }));
+    }
+    return rows.map((row: any) => ({
       id: String(row.id),
       name: row.name,
       role: row.metadata?.role || "",
@@ -276,7 +301,33 @@ export async function getProducts(): Promise<Product[]> {
       .select("*")
       .order("created_at", { ascending: false });
     if (error) throw error;
-    return (data || []).map((row: any) => ({
+    const rows = data || [];
+    if (rows.length === 0) {
+      // Seed default products into Supabase so they appear on the site
+      for (const product of DEFAULT_PRODUCTS) {
+        await getSupabaseAdmin().from("products").insert({
+          name: product.name,
+          slug: product.slug,
+          description: product.description,
+          metadata: product,
+        });
+      }
+      const { data: seeded } = await getSupabaseAdmin()
+        .from("products")
+        .select("*")
+        .order("created_at", { ascending: false });
+      return (seeded || []).map((row: any) => ({
+        ...row.metadata,
+        id: String(row.id),
+        name: row.name,
+        slug: row.slug,
+        description: row.description || "",
+        image: row.metadata?.image || "",
+        tags: row.metadata?.tags || [],
+        createdAt: row.created_at,
+      }));
+    }
+    return rows.map((row: any) => ({
       ...row.metadata,
       id: String(row.id),
       name: row.name,
@@ -535,7 +586,6 @@ export async function markCommunicationRead(id: string): Promise<boolean> {
 
 export async function getSubscribers(): Promise<Subscriber[]> {
   if (shouldUseSupabase()) {
-    // Subscribers are stored as communications with subscription flags
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .select("*")
@@ -567,7 +617,6 @@ export async function addSubscriber(
   sub: Omit<Subscriber, "id" | "createdAt">
 ): Promise<Subscriber> {
   if (shouldUseSupabase()) {
-    // Check if subscriber already exists by email
     const { data: existing } = await getSupabaseAdmin()
       .from("communications")
       .select("id")
@@ -575,7 +624,6 @@ export async function addSubscriber(
       .limit(1)
       .maybeSingle();
     if (existing) {
-      // Update subscription preferences
       await getSupabaseAdmin()
         .from("communications")
         .update({
@@ -588,7 +636,6 @@ export async function addSubscriber(
         .eq("id", existing.id);
       return { ...sub, id: String(existing.id), createdAt: new Date().toISOString() };
     }
-    // Create new subscriber as a communication entry
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .insert({
@@ -683,7 +730,6 @@ export async function addReply(
 
 export async function getDemoRequests(): Promise<DemoRequest[]> {
   if (shouldUseSupabase()) {
-    // Demo requests are stored in communications with a specific interest pattern
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .select("*")
@@ -709,7 +755,6 @@ export async function addDemoRequest(
   req: Omit<DemoRequest, "id" | "createdAt">
 ): Promise<DemoRequest> {
   if (shouldUseSupabase()) {
-    // Store as a communication with demo interest pattern
     const { data, error } = await getSupabaseAdmin()
       .from("communications")
       .insert({
