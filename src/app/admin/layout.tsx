@@ -143,7 +143,7 @@ export default function AdminLayout({
       setChecking(false);
       return;
     }
-    fetch("/api/auth")
+    fetch("/api/auth", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.authenticated) setAuthorized(true);

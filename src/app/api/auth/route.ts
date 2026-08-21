@@ -90,10 +90,21 @@ export async function GET(req: NextRequest) {
       { status: 401, headers: { "Cache-Control": "no-store" } }
     );
   }
-  // Try to get admin name from stored admin
+  let sessionEmail = "";
+  try {
+    sessionEmail = Buffer.from(token, "base64").toString("utf8").split(":")[0];
+  } catch {
+    return NextResponse.json({ authenticated: false }, { status: 401 });
+  }
+  if (!sessionEmail) {
+    return NextResponse.json({ authenticated: false }, { status: 401 });
+  }
   const admin = isSupabaseConfigured()
-    ? await getSupabaseAdminUser()
-    : await getAdmin();
+    ? await getSupabaseAdminUser(sessionEmail)
+    : await getAdminByEmail(sessionEmail);
+  if (!admin) {
+    return NextResponse.json({ authenticated: false }, { status: 401 });
+  }
   const adminName = admin?.name || "Admin";
   return NextResponse.json(
     { authenticated: true, adminName },
