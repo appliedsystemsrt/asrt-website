@@ -53,6 +53,16 @@ export async function POST(req: NextRequest) {
       from: email,
     };
 
+    if (process.env.VERCEL && !isSupabaseConfigured()) {
+      return NextResponse.json(
+        {
+          error:
+            "Email verification succeeded, but Supabase is not configured on Vercel. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in Vercel, then redeploy.",
+        },
+        { status: 503 }
+      );
+    }
+
     // Vercel uses Supabase because its filesystem is read-only.
     if (isSupabaseConfigured()) {
       await saveSupabaseSmtpConfig(smtpConfig);
