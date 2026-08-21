@@ -1,0 +1,18 @@
+[
+  {
+    "id": "1",
+    "name": "Dr. Anandhi",
+    "role": "Founder & Research Director",
+    "bio": "Leading applied AI research with a focus on bridging academic innovation and real-world systems.",
+    "image": "",
+    "createdAt": "2026-08-20T12:00:20.622Z"
+  },
+  {
+    "id": "2",
+    "name": "Dr. Anasuya Devi",
+    "role": "Head of AI & Machine Learning",
+    "bio": "Specializing in machine learning architectures and generative AI systems for complex engineering challenges.",
+    "image": "",
+    "createdAt": "2026-08-20T12:00:20.622Z"
+  }
+]

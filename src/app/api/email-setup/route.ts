@@ -1,0 +1,123 @@
+import { NextRequest, NextResponse } from "next/server";
+import nodemailer from "nodemailer";
+import fs from "fs";
+import path from "path";
+import { saveSmtpConfig } from "@/lib/db";
+
+export async function POST(req: NextRequest) {
+  try {
+    const { email, appPassword } = await req.json();
+
+    if (!email || !appPassword) {
+      return NextResponse.json(
+        { error: "Email and app password are required" },
+        { status: 400 }
+      );
+    }
+
+    // Validate email format
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return NextResponse.json(
+        { error: "Invalid email format" },
+        { status: 400 }
+      );
+    }
+
+    // Remove spaces from app password (Gmail format: xxxx xxxx xxxx xxxx)
+    const cleanPassword = appPassword.replace(/\s/g, "");
+
+    // Test SMTP connection
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      auth: {
+        user: email,
+        pass: cleanPassword,
+      },
+    });
+
+    // Verify connection
+    await transporter.verify();
+
+    // Save to database
+    saveSmtpConfig({
+      host: "smtp.gmail.com",
+      port: 587,
+      user: email,
+      pass: cleanPassword,
+      from: email,
+    });
+
+    // Save to .env.local
+    const envPath = path.join(process.cwd(), ".env.local");
+    let envContent = "";
+
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, "utf-8");
+    }
+
+    // Remove existing SMTP variables if any
+    const envLines = envContent
+      .split("\n")
+      .filter(
+        (line) =>
+          !line.startsWith("SMTP_HOST=") &&
+          !line.startsWith("SMTP_PORT=") &&
+          !line.startsWith("SMTP_USER=") &&
+          !line.startsWith("SMTP_PASS=") &&
+          !line.startsWith("SMTP_FROM=")
+      );
+
+    // Add new SMTP variables
+    envLines.push(
+      "",
+      "# Email Configuration (Gmail SMTP)",
+      "SMTP_HOST=smtp.gmail.com",
+      "SMTP_PORT=587",
+      `SMTP_USER=${email}`,
+      `SMTP_PASS=${cleanPassword}`,
+      `SMTP_FROM=${email}`
+    );
+
+    fs.writeFileSync(envPath, envLines.join("\n"), "utf-8");
+
+    return NextResponse.json({
+      success: true,
+      message: "Email configured successfully",
+      email: email,
+    });
+  } catch (error: any) {
+    console.error("[Email Setup] Error:", error);
+
+    // Provide helpful error messages
+    let errorMessage = "Failed to configure email";
+
+    if (error.code === "EAUTH") {
+      errorMessage =
+        "Authentication failed. Please check your email and app password. Make sure you've generated an app password in your Google Account settings.";
+    } if (error.code === "ECONNREFUSED") {
+      errorMessage =
+        "Connection refused. Please check your internet connection.";
+    } if (error.message?.includes("Invalid login")) {
+      errorMessage =
+        "Invalid login credentials. Please verify your Gmail address and app password are correct.";
+    }
+
+    return NextResponse.json({ error: errorMessage }, { status: 500 });
+  }
+}
+
+export async function GET() {
+  try {
+    const { getSmtpConfig } = await import("@/lib/db");
+    const config = getSmtpConfig();
+
+    return NextResponse.json({
+      configured: !!config,
+      email: config?.user || null,
+    });
+  } catch {
+    return NextResponse.json({ configured: false, email: null });
+  }
+}

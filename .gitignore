@@ -33,6 +33,14 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# private runtime data
+/data/admins.json
+/data/smtp.json
+/data/communications.json
+/data/subscribers.json
+/data/replies.json
+/data/demos.json
+
 # vercel
 .vercel
 

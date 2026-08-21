@@ -1,0 +1,56 @@
+[
+  {
+    "id": "1",
+    "slug": "jarvis",
+    "name": "JARVIS AI",
+    "tagline": "AI Business Analyst for Intelligent Commerce",
+    "description": "JARVIS brings transactional, inventory and behavioral data together with generative AI to produce structured business intelligence.",
+    "overview": "",
+    "problem": "",
+    "intelligence": "",
+    "modules": "",
+    "architecture": "",
+    "technology": "",
+    "security": "",
+    "performance": "",
+    "testing": "",
+    "roadmap": "",
+    "tags": [
+      "AI",
+      "Commerce",
+      "Business Intelligence"
+    ],
+    "image": "",
+    "createdAt": "2026-08-20T12:00:20.622Z"
+  },
+  {
+    "slug": "gpu-accelerated-hpc-cluster-microsoft-azure",
+    "name": "GPU-Accelerated HPC Cluster on Microsoft Azure",
+    "tagline": "Scalable AI training and HPC on Azure with GPU acceleration",
+    "description": "A cloud-native platform that provisions GPU-accelerated HPC clusters on Microsoft Azure for large-scale AI model training and high-performance computing. Built on NVIDIA Hopper and Ada Lovelace GPUs with Azure ND H100 VMs and Azure Kubernetes Service, it delivers optimized compute, networking, and power solutions for modern workloads.",
+    "overview": "The product enables rapid deployment and management of GPU clusters for AI training, HPC simulations, and mixed-precision workloads. Leveraging Azure’s managed compute, high-speed InfiniBand interconnects, and automated sizing, it ensures efficient resource utilization, low latency, and transparent cost visibility.",
+    "problem": "Organizations struggle to design and operate GPU-enabled clusters without standardized methodologies, resulting in mis-sized instances, underutilization, costly power consumption, and complex networking challenges.",
+    "intelligence": "Integrates AI-driven workload profiling, mixed-precision training support, and automated sizing algorithms to maximize throughput, memory efficiency, and training convergence.",
+    "modules": "Hardware selection, Compute sizing engine, Power & cooling management, Networking architecture, Container orchestration, Monitoring suite, TCO analyzer",
+    "architecture": "Composes of compute nodes running Azure ND H100 v5 VMs with NVLink, a non-blocking spine-leaf InfiniBand fabric providing GPUDirect RDMA, Azure Kubernetes Service for pod orchestration, centralized monitoring stack, and unified storage tiers.",
+    "technology": "NVIDIA H100/H200 GPUs, NVIDIA Quantum-2 InfiniBand, Azure ND H100 v5 VMs, Azure Kubernetes Service, Cloud API gateways, Azure Monitor, Kubernetes CNI overlay",
+    "security": "Enforces VM isolation, VNet segregation, private endpoints, RBAC for AKS, encrypted data at rest and in transit, regular patching, and compliance with data residency standards.",
+    "performance": "Delivers up to 67 TFLOPS per H100 GPU, >4 TB/s memory bandwidth, multi-terabyte inter-node InfiniBand links, and scales to hundreds of nodes; power density supports up to 30–40 kW per rack; achieves >95% GPU utilization under optimal workloads.",
+    "testing": "Validates sizing through corrected FLOP calculations, runs benchmarked training jobs (e.g., 175-B parameter models), performs stress tests on network fabrics, conducts power and cooling simulations, and employs chaos engineering to verify resilience.",
+    "roadmap": "Planned enhancements include integration of upcoming Blackwell GPUs, expansion into quantum chemistry and genomics HPC, smarter auto-scaling for burst workloads, deeper energy-aware scheduling, and federated multi-cluster service discovery.",
+    "tags": [
+      "GPU Computing",
+      "HPC",
+      "AI Training",
+      "Azure",
+      "InfiniBand",
+      "Kubernetes",
+      "Large Language Models",
+      "Total Cost Optimization",
+      "Power Efficiency"
+    ],
+    "image": "",
+    "id": "mt1sa3qe4gf7g",
+    "createdAt": "2026-08-20T17:17:44.678Z"
+  }
+]
