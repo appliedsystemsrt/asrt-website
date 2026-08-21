@@ -69,6 +69,10 @@ async function extractDocumentText(fileName: string, buffer: Buffer) {
   return "";
 }
 
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif", "image/svg+xml"]);
+const ALLOWED_DOC_TYPES = new Set(["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "text/plain"]);
+const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+
 export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
@@ -77,11 +81,30 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    const ext = file.name.includes(".") ? file.name.split(".").pop()?.toLowerCase() : "bin";
+
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      return NextResponse.json(
+        { error: `File too large. Maximum size is 10 MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)} MB.` },
+        { status: 400 }
+      );
+    }
+
+    // Validate file type
+    const isImage = ALLOWED_IMAGE_TYPES.has(file.type) || ["jpg", "jpeg", "png", "webp", "gif", "svg"].includes(ext || "");
+    const isDoc = ALLOWED_DOC_TYPES.has(file.type) || ["pdf", "docx", "txt", "doc"].includes(ext || "");
+    if (!isImage && !isDoc) {
+      return NextResponse.json(
+        { error: `Unsupported file type. Accepted: JPG, PNG, WebP, GIF, SVG, PDF, DOCX, TXT. Got: ${file.type || ext}` },
+        { status: 400 }
+      );
+    }
+
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const ext = file.name.includes(".") ? "." + file.name.split(".").pop() : ".bin";
-    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}${ext}`;
+    const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
 
     let url: string;
 

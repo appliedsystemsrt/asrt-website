@@ -292,6 +292,7 @@ export async function notifySubscribers(post: {
     return subscriber.subscribeBlogs;
   });
 
+  console.log(`[Email] notifySubscribers: type=${post.type}, title=${post.title}, found ${subscribers.length} matching subscribers`);
   const postUrl = `${SITE_URL}/blog?post=${encodeURIComponent(post.id)}`;
   const label = post.type === "newsletter" ? "newsletter" : post.type;
   const results = await Promise.all(

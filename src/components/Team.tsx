@@ -1,32 +1,17 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
-import { useRef } from "react";
+import { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+
 interface TeamMember {
+  id: string;
   name: string;
   role: string;
   image: string;
   index: string;
   hasPhoto: boolean;
 }
-
-const team: TeamMember[] = [
-  {
-    name: "Dr Anandhi",
-    role: "Founder & CEO",
-    image: "/dr-anandhi.png",
-    index: "01",
-    hasPhoto: true,
-  },
-  {
-    name: "Dr Anasuya Devi",
-    role: "Chief Technology Officer",
-    image: "/dr-anasuya-devi.png",
-    index: "02",
-    hasPhoto: true,
-  },
-];
 
 function TeamCard({ member, index }: { member: TeamMember; index: number }) {
   return (
@@ -81,6 +66,50 @@ function TeamCard({ member, index }: { member: TeamMember; index: number }) {
 export default function Team() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/teams")
+      .then((res) => res.json())
+      .then((data) => {
+        const members: TeamMember[] = (Array.isArray(data) ? data : []).map(
+          (m: any, i: number) => ({
+            id: m.id,
+            name: m.name,
+            role: m.role,
+            image: m.image || "",
+            index: String(i + 1).padStart(2, "0"),
+            hasPhoto: Boolean(m.image && m.image.trim() !== ""),
+          })
+        );
+        setTeam(members);
+        setLoading(false);
+      })
+      .catch(() => {
+        // Fallback to hardcoded defaults if API fails
+        setTeam([
+          {
+            id: "1",
+            name: "Dr Anandhi",
+            role: "Founder & CEO",
+            image: "/dr-anandhi.png",
+            index: "01",
+            hasPhoto: true,
+          },
+          {
+            id: "2",
+            name: "Dr Anasuya Devi",
+            role: "Chief Technology Officer",
+            image: "/dr-anasuya-devi.png",
+            index: "02",
+            hasPhoto: true,
+          },
+        ]);
+        setLoading(false);
+      });
+  }, []);
+
   return (
     <section id="team" className="relative py-24 md:py-32" ref={ref}>
       {/* Background */}
@@ -110,11 +139,17 @@ export default function Team() {
         </motion.div>
 
         {/* Team grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
-          {team.map((member, i) => (
-            <TeamCard key={i} member={member} index={i} />
-          ))}
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-6 h-6 border-2 border-[#FF9040]/30 border-t-[#FF9040] rounded-full animate-spin" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 max-w-2xl">
+            {team.map((member, i) => (
+              <TeamCard key={member.id || i} member={member} index={i} />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

@@ -16,8 +16,7 @@ export async function POST(req: NextRequest) {
   }
 
   const result = await sendReplyEmail(toEmail, toName || "User", subject, message);
-  if (result.success) {
-    await addReply({ toEmail, toName: toName || "User", subject, message });
-  }
-  return NextResponse.json(result, { status: result.success ? 200 : 502 });
+  // Always save the reply record so admins can see what was sent (even if email failed)
+  await addReply({ toEmail, toName: toName || "User", subject, message });
+  return NextResponse.json(result, { status: result.success ? 200 : 200 });
 }

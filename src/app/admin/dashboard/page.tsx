@@ -15,6 +15,7 @@ interface Stats {
 export default function AdminDashboard() {
   const [adminName, setAdminName] = useState("Admin");
   const [currentTime, setCurrentTime] = useState("");
+  const [migrating, setMigrating] = useState(false);
   const [stats, setStats] = useState<Stats>({
     teams: 0,
     products: 0,
@@ -126,6 +127,45 @@ export default function AdminDashboard() {
         <div className="text-right">
           <p className="text-lg font-mono text-white/50">{currentTime}</p>
         </div>
+      </div>
+
+      {/* Data Migration */}
+      <div className="bg-blue-500/5 border border-blue-500/20 rounded-xl p-4 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
+            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+            </svg>
+          </div>
+          <div>
+            <p className="text-sm font-medium text-white/80">Import Existing Data</p>
+            <p className="text-xs text-white/40">Import blogs, communications, replies, teams, and products from local storage into Supabase.</p>
+          </div>
+        </div>
+        <button
+          onClick={async () => {
+            setMigrating(true);
+            try {
+              const res = await fetch("/api/migrate-data", { method: "POST" });
+              const data = await res.json();
+              if (data.success) {
+                const summary = Object.entries(data.results)
+                  .map(([key, val]: [string, any]) => `${key}: ${val.imported} imported, ${val.skipped} skipped`)
+                  .join("\n");
+                alert(`Migration complete!\n\n${summary}`);
+              } else {
+                alert("Migration error: " + (data.error || "Unknown error"));
+              }
+            } catch {
+              alert("Migration failed. Check console for details.");
+            }
+            setMigrating(false);
+          }}
+          disabled={migrating}
+          className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+        >
+          {migrating ? "Migrating..." : "Import Data"}
+        </button>
       </div>
 
       {/* Email Not Configured Warning */}
