@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
   }
 
   if (type === "demo") {
-    addDemoRequest(data);
-    addCommunication({
+    await addDemoRequest(data);
+    await addCommunication({
       name: data.name,
       email: data.email,
       phone: data.phone || "",
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const admin = getAdmin();
+  const admin = await getAdmin();
   if (!admin) {
     return NextResponse.json(
       { error: "No admin registered. Please register first at /register_mail" },
@@ -65,23 +65,18 @@ export async function POST(req: NextRequest) {
 
   switch (type) {
     case "contact":
-      // Notify admin
       result = await sendContactNotification(admin.email, data);
-      // Confirm to user
       if (data.email) {
         await sendContactConfirmation(data.email, data.name);
       }
       break;
 
     case "demo":
-      // Notify admin
       result = await sendDemoNotification(admin.email, data);
-      // Confirm to user
       if (data.email) {
         await sendDemoConfirmation(data.email, data.name);
       }
       break;
-
   }
 
   return NextResponse.json({ success: result.success, error: result.error });

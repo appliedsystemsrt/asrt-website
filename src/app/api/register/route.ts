@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 export async function GET() {
   const admin = isSupabaseConfigured()
     ? await getSupabaseAdminUser()
-    : getAdmin();
+    : await getAdmin();
   if (!admin) {
     return NextResponse.json({ registered: false });
   }

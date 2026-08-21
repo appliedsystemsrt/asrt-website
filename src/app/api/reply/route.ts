@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
   const result = await sendReplyEmail(toEmail, toName || "User", subject, message);
   if (result.success) {
-    addReply({ toEmail, toName: toName || "User", subject, message });
+    await addReply({ toEmail, toName: toName || "User", subject, message });
   }
   return NextResponse.json(result, { status: result.success ? 200 : 502 });
 }

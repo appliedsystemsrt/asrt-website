@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import fs from "fs";
-import path from "path";
 import { inflateRawSync } from "zlib";
 import JSZip from "jszip";
-
-const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
-
-function ensureDir() {
-  if (!fs.existsSync(UPLOAD_DIR)) {
-    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  }
-}
+import { isSupabaseConfigured, getSupabaseAdmin } from "@/lib/supabase";
 
 function decodePdfString(value: string) {
   return value
@@ -71,16 +62,15 @@ async function extractDocxText(buffer: Buffer) {
 }
 
 async function extractDocumentText(fileName: string, buffer: Buffer) {
-  const extension = path.extname(fileName).toLowerCase();
-  if (extension === ".pdf") return extractPdfText(buffer);
-  if (extension === ".docx") return extractDocxText(buffer);
-  if (extension === ".txt") return buffer.toString("utf8").trim();
+  const extension = fileName.split(".").pop()?.toLowerCase() || "";
+  if (extension === "pdf") return extractPdfText(buffer);
+  if (extension === "docx") return extractDocxText(buffer);
+  if (extension === "txt") return buffer.toString("utf8").trim();
   return "";
 }
 
 export async function POST(req: NextRequest) {
   try {
-    ensureDir();
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
     if (!file) {
@@ -90,11 +80,45 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    const ext = path.extname(file.name) || ".bin";
+    const ext = file.name.includes(".") ? "." + file.name.split(".").pop() : ".bin";
     const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}${ext}`;
-    const filepath = path.join(UPLOAD_DIR, filename);
 
-    fs.writeFileSync(filepath, buffer);
+    let url: string;
+
+    if (isSupabaseConfigured()) {
+      // Upload to Supabase Storage
+      const supabase = getSupabaseAdmin();
+      const { error: uploadError } = await supabase.storage
+        .from("uploads")
+        .upload(filename, buffer, {
+          contentType: file.type || "application/octet-stream",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error("[Upload] Supabase storage error:", uploadError);
+        return NextResponse.json(
+          { error: "Upload failed: " + uploadError.message },
+          { status: 500 }
+        );
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("uploads")
+        .getPublicUrl(filename);
+      url = urlData.publicUrl;
+    } else {
+      // Local dev fallback: write to public/uploads
+      const fs = await import("fs");
+      const path = await import("path");
+      const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
+      if (!fs.existsSync(UPLOAD_DIR)) {
+        fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+      }
+      fs.writeFileSync(path.join(UPLOAD_DIR, filename), buffer);
+      url = `/uploads/${filename}`;
+    }
 
     let text = "";
     if (/\.(pdf|docx|txt)$/i.test(file.name)) {
@@ -103,14 +127,12 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      url: `/uploads/${filename}`,
+      url,
       filename,
       text,
     });
   } catch (error) {
-    return NextResponse.json(
-      { error: "Upload failed" },
-      { status: 500 }
-    );
+    console.error("[Upload] Error:", error);
+    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }
 }

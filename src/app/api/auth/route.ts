@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       return response;
     }
   } else {
-    const admin = getAdminByEmail(email);
+    const admin = await getAdminByEmail(email);
     if (admin && admin.email === email) {
       const passwordValid = admin.password === password;
       if (!passwordValid) {

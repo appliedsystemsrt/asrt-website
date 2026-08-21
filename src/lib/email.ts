@@ -261,8 +261,9 @@ export async function notifySubscribers(post: {
   title: string;
   excerpt: string;
 }) {
-  const storedSubscribers = getSubscribers();
-  const historicalSubscribers = getCommunications().filter(
+  const storedSubscribers = await getSubscribers();
+  const historicalCommunications = await getCommunications();
+  const historicalSubscribers = historicalCommunications.filter(
     (communication) =>
       communication.subscribeNewsletters ||
       communication.subscribeArticles ||
@@ -281,7 +282,10 @@ export async function notifySubscribers(post: {
       createdAt: communication.createdAt,
     })),
   ].filter((subscriber, index, all) =>
-    all.findIndex((candidate) => candidate.email.toLowerCase() === subscriber.email.toLowerCase()) === index
+    all.findIndex(
+      (candidate) =>
+        candidate.email.toLowerCase() === subscriber.email.toLowerCase()
+    ) === index
   ).filter((subscriber) => {
     if (post.type === "newsletter") return subscriber.subscribeNewsletters;
     if (post.type === "article") return subscriber.subscribeArticles;

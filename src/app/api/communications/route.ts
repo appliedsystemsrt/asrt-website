@@ -1,15 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import { addSubscriber, getCommunications, addCommunication, markCommunicationRead } from "@/lib/db";
+import { getCommunications, addCommunication, markCommunicationRead, addSubscriber } from "@/lib/db";
 
 export async function GET() {
-  return NextResponse.json(getCommunications());
+  const comms = await getCommunications();
+  return NextResponse.json(comms);
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const comm = addCommunication(body);
+  const comm = await addCommunication(body);
   if (body.subscribeNewsletters || body.subscribeArticles || body.subscribeBlogs) {
-    addSubscriber({
+    await addSubscriber({
       name: body.name || "",
       email: body.email,
       phone: body.phone || "",
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const body = await req.json();
   if (body.action === "markRead" && body.id) {
-    const success = markCommunicationRead(body.id);
+    const success = await markCommunicationRead(body.id);
     return NextResponse.json({ success });
   }
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });

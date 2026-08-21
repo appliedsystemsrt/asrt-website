@@ -5,5 +5,6 @@ export async function GET(req: NextRequest) {
   if (!req.cookies.get("admin-token")?.value) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json(getReplies());
+  const replies = await getReplies();
+  return NextResponse.json(replies);
 }
