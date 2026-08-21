@@ -50,7 +50,6 @@ function CommunicationsContent() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ action: "markRead", id: comm.id }),
           }).then(() => {
-            // Update local state immediately
             setSelected((prev) => (prev && prev.id === comm.id ? { ...prev, read: true } : prev));
             fetchComms();
           });
@@ -58,6 +57,29 @@ function CommunicationsContent() {
       }
     }
   }, [selectedId, comms]);
+
+  const toggleSubscription = async (commId: string, field: "subscribeNewsletters" | "subscribeArticles" | "subscribeBlogs", currentValue: boolean) => {
+    // Update locally first for instant feedback
+    setSelected((prev) => prev && prev.id === commId ? { ...prev, [field]: !currentValue } : prev);
+    setComms((prev) => prev.map((c) => c.id === commId ? { ...c, [field]: !currentValue } : c));
+
+    try {
+      await fetch("/api/communications", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id: commId,
+          subscribeNewsletters: selected?.id === commId ? !currentValue : selected?.subscribeNewsletters ?? false,
+          subscribeArticles: selected?.id === commId ? !currentValue : selected?.subscribeArticles ?? false,
+          subscribeBlogs: selected?.id === commId ? !currentValue : selected?.subscribeBlogs ?? false,
+        }),
+      });
+    } catch {
+      // Revert on error
+      setSelected((prev) => prev && prev.id === commId ? { ...prev, [field]: currentValue } : prev);
+      setComms((prev) => prev.map((c) => c.id === commId ? { ...c, [field]: currentValue } : c));
+    }
+  };
 
   const unreadCount = comms.filter((c) => !c.read).length;
 
@@ -164,18 +186,28 @@ function CommunicationsContent() {
                 </p>
               </div>
 
-              {/* Subscription Preferences */}
+              {/* Subscription Preferences — Toggleable */}
               <div>
                 <h3 className="text-sm font-medium text-white/50 mb-2">
                   Subscription Preferences
                 </h3>
+                <p className="text-xs text-white/30 mb-3">Toggle to subscribe/unsubscribe this contact from notifications</p>
                 <div className="flex gap-3 flex-wrap">
-                  <SubBadge
+                  <SubToggle
                     label="Newsletters"
                     active={selected.subscribeNewsletters}
+                    onToggle={() => toggleSubscription(selected.id, "subscribeNewsletters", selected.subscribeNewsletters)}
                   />
-                  <SubBadge label="Articles" active={selected.subscribeArticles} />
-                  <SubBadge label="Blogs" active={selected.subscribeBlogs} />
+                  <SubToggle
+                    label="Articles"
+                    active={selected.subscribeArticles}
+                    onToggle={() => toggleSubscription(selected.id, "subscribeArticles", selected.subscribeArticles)}
+                  />
+                  <SubToggle
+                    label="Blogs"
+                    active={selected.subscribeBlogs}
+                    onToggle={() => toggleSubscription(selected.id, "subscribeBlogs", selected.subscribeBlogs)}
+                  />
                 </div>
               </div>
 
@@ -226,13 +258,15 @@ function DetailItem({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SubBadge({ label, active }: { label: string; active: boolean }) {
+function SubToggle({ label, active, onToggle }: { label: string; active: boolean; onToggle: () => void }) {
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs ${
+    <button
+      type="button"
+      onClick={onToggle}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs cursor-pointer transition-all border ${
         active
-          ? "bg-green-500/10 text-green-400 border border-green-500/20"
-          : "bg-white/5 text-white/30 border border-white/5"
+          ? "bg-green-500/10 text-green-400 border-green-500/30 hover:bg-green-500/20"
+          : "bg-white/5 text-white/30 border-white/10 hover:bg-white/10 hover:text-white/50"
       }`}
     >
       <span
@@ -241,7 +275,8 @@ function SubBadge({ label, active }: { label: string; active: boolean }) {
         }`}
       />
       {label}
-    </span>
+      <span className="text-[10px] ml-1 opacity-60">{active ? "ON" : "OFF"}</span>
+    </button>
   );
 }
 

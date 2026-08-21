@@ -208,9 +208,10 @@ export async function getTeams(): Promise<TeamMember[]> {
       .order("created_at", { ascending: true });
     if (error) throw error;
     const rows = data || [];
-    if (rows.length === 0) {
-      // Seed default team members into Supabase so they appear on the site
-      for (const member of DEFAULT_TEAMS) {
+    // Seed default team members if they don't already exist
+    for (const member of DEFAULT_TEAMS) {
+      const exists = rows.some((r: any) => r.name === member.name);
+      if (!exists) {
         await getSupabaseAdmin().from("teams").insert({
           name: member.name,
           slug: `${member.name.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-${Date.now()}`,
@@ -218,21 +219,13 @@ export async function getTeams(): Promise<TeamMember[]> {
           metadata: { role: member.role, bio: member.bio, image: member.image },
         });
       }
-      // Re-fetch after seeding
-      const { data: seeded } = await getSupabaseAdmin()
-        .from("teams")
-        .select("*")
-        .order("created_at", { ascending: true });
-      return (seeded || []).map((row: any) => ({
-        id: String(row.id),
-        name: row.name,
-        role: row.metadata?.role || "",
-        bio: row.metadata?.bio || row.description || "",
-        image: row.metadata?.image || "",
-        createdAt: row.created_at,
-      }));
     }
-    return rows.map((row: any) => ({
+    // Re-fetch after potential seeding
+    const { data: final } = await getSupabaseAdmin()
+      .from("teams")
+      .select("*")
+      .order("created_at", { ascending: true });
+    return (final || []).map((row: any) => ({
       id: String(row.id),
       name: row.name,
       role: row.metadata?.role || "",
@@ -302,9 +295,10 @@ export async function getProducts(): Promise<Product[]> {
       .order("created_at", { ascending: false });
     if (error) throw error;
     const rows = data || [];
-    if (rows.length === 0) {
-      // Seed default products into Supabase so they appear on the site
-      for (const product of DEFAULT_PRODUCTS) {
+    // Seed default products if they don't already exist
+    for (const product of DEFAULT_PRODUCTS) {
+      const exists = rows.some((r: any) => r.slug === product.slug);
+      if (!exists) {
         await getSupabaseAdmin().from("products").insert({
           name: product.name,
           slug: product.slug,
@@ -312,22 +306,13 @@ export async function getProducts(): Promise<Product[]> {
           metadata: product,
         });
       }
-      const { data: seeded } = await getSupabaseAdmin()
-        .from("products")
-        .select("*")
-        .order("created_at", { ascending: false });
-      return (seeded || []).map((row: any) => ({
-        ...row.metadata,
-        id: String(row.id),
-        name: row.name,
-        slug: row.slug,
-        description: row.description || "",
-        image: row.metadata?.image || "",
-        tags: row.metadata?.tags || [],
-        createdAt: row.created_at,
-      }));
     }
-    return rows.map((row: any) => ({
+    // Re-fetch after potential seeding
+    const { data: final } = await getSupabaseAdmin()
+      .from("products")
+      .select("*")
+      .order("created_at", { ascending: false });
+    return (final || []).map((row: any) => ({
       ...row.metadata,
       id: String(row.id),
       name: row.name,

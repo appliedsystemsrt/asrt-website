@@ -18,6 +18,7 @@ export default function AdminTeams() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ name: "", role: "", bio: "", image: "" });
+  const [imageUploading, setImageUploading] = useState(false);
 
   const fetchTeams = async () => {
     const res = await fetch("/api/teams");
@@ -28,6 +29,24 @@ export default function AdminTeams() {
   useEffect(() => {
     fetchTeams();
   }, []);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const data = await res.json();
+      if (data.url) {
+        setForm((prev) => ({ ...prev, image: data.url }));
+      }
+    } catch {
+      alert("Image upload failed");
+    }
+    setImageUploading(false);
+  };
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -111,13 +130,22 @@ export default function AdminTeams() {
                 />
               </div>
               <div>
-                <label className="block text-sm text-white/50 mb-1">Image URL (optional)</label>
-                <input
-                  value={form.image}
-                  onChange={(e) => setForm({ ...form, image: e.target.value })}
-                  className="admin-input"
-                  placeholder="/uploads/photo.jpg or https://..."
-                />
+                <label className="block text-sm text-white/50 mb-1">Photo</label>
+                <div className="flex items-center gap-4">
+                  <label className="admin-btn admin-btn-secondary text-sm cursor-pointer flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
+                    </svg>
+                    <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+                    {imageUploading ? "Uploading..." : "Upload Photo"}
+                  </label>
+                  {form.image && (
+                    <div className="relative">
+                      <img src={form.image} alt="Preview" className="h-14 w-14 rounded-full object-cover border border-white/10" />
+                      <button type="button" onClick={() => setForm({ ...form, image: "" })} className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">×</button>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button type="submit" className="admin-btn admin-btn-primary">
