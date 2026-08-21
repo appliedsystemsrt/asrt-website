@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 type View = "choose" | "manual" | "google" | "success" | "registered";
 
@@ -223,12 +224,12 @@ export default function RegisterMailPage() {
               >
                 Go to Admin Panel
               </a>
-              <a
+              <Link
                 href="/"
                 className="px-6 py-2 text-sm text-white/50 border border-white/10 hover:border-white/20 rounded-lg transition-all"
               >
                 View Website
-              </a>
+              </Link>
             </div>
           </div>
         </motion.div>

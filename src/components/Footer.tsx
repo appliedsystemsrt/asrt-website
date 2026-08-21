@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 const columns = [
   {
     title: "Company",
@@ -73,9 +75,9 @@ export default function Footer() {
 
         {/* Bottom bar */}
         <div className="mt-12 pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
-          <a href="/" className="text-[11px] text-white/25 font-mono hover:text-white/40 transition-colors">
+          <Link href="/" className="text-[11px] text-white/25 font-mono hover:text-white/40 transition-colors">
 APPLIED SYSTEMS RESEARCH AND TECHNOLOGY (OPC) PRIVATE LIMITED
-          </a>
+          </Link>
           <p className="text-[10px] text-white/15">
             © {new Date().getFullYear()} ASRT. All rights reserved.
           </p>
