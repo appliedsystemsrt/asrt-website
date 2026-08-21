@@ -144,9 +144,9 @@ export default function AdminLayout({
       return;
     }
     fetch("/api/auth", { credentials: "include", cache: "no-store" })
-      .then((r) => r.json())
+      .then(async (r) => ({ ok: r.ok, data: await r.json() }))
       .then((d) => {
-        if (d.authenticated) setAuthorized(true);
+        if (d.ok && d.data.authenticated) setAuthorized(true);
         else router.replace("/admin");
         setChecking(false);
       })

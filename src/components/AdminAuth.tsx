@@ -9,7 +9,7 @@ export default function AdminAuth({ children }: { children: React.ReactNode }) {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    fetch("/api/auth")
+    fetch("/api/auth", { credentials: "include", cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error("Not authenticated");
         return r.json();
