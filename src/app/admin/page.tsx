@@ -14,7 +14,7 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    fetch("/api/auth")
+    fetch("/api/auth", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.authenticated) router.replace("/admin/dashboard");
@@ -31,12 +31,15 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/auth", {
         method: "POST",
+        credentials: "include",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
       const data = await res.json();
       if (data.success) {
-        router.push("/admin/dashboard");
+        router.replace("/admin/dashboard");
+        router.refresh();
       } else {
         setError(data.error || "Invalid credentials");
       }

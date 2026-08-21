@@ -86,7 +86,7 @@ function AdminGreeting() {
   const [time, setTime] = useState("");
 
   useEffect(() => {
-    fetch("/api/auth")
+    fetch("/api/auth", { credentials: "include", cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.authenticated) {

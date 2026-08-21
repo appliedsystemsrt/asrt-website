@@ -85,12 +85,18 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const token = req.cookies.get("admin-token")?.value;
   if (!token) {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
+    return NextResponse.json(
+      { authenticated: false },
+      { status: 401, headers: { "Cache-Control": "no-store" } }
+    );
   }
   // Try to get admin name from stored admin
   const admin = isSupabaseConfigured()
     ? await getSupabaseAdminUser()
     : await getAdmin();
   const adminName = admin?.name || "Admin";
-  return NextResponse.json({ authenticated: true, adminName });
+  return NextResponse.json(
+    { authenticated: true, adminName },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
