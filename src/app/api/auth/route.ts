@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAdminByEmail, getAdmin } from "@/lib/db";
 import {
   getSupabaseAdminUser,
+  createAdminSessionToken,
+  getAdminSessionEmail,
   isSupabaseConfigured,
   upgradeAdminPassword,
   verifyAdminPassword,
@@ -16,7 +18,7 @@ export async function POST(req: NextRequest) {
 
   // Check fallback credentials
   if (!isSupabaseConfigured() && email === FALLBACK_EMAIL && password === FALLBACK_PASSWORD) {
-    const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
+    const token = createAdminSessionToken(email);
     const response = NextResponse.json({ success: true, token });
     response.cookies.set("admin-token", token, {
       httpOnly: true,
@@ -42,7 +44,7 @@ export async function POST(req: NextRequest) {
       if (!admin.password_hash.includes(":")) {
         await upgradeAdminPassword(admin.id, password);
       }
-      const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
+      const token = createAdminSessionToken(email);
       const response = NextResponse.json({ success: true, token });
       response.cookies.set("admin-token", token, {
         httpOnly: true,
@@ -63,7 +65,7 @@ export async function POST(req: NextRequest) {
           { status: 401 }
         );
       }
-      const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
+      const token = createAdminSessionToken(email);
       const response = NextResponse.json({ success: true, token });
       response.cookies.set("admin-token", token, {
         httpOnly: true,
@@ -90,24 +92,12 @@ export async function GET(req: NextRequest) {
       { status: 401, headers: { "Cache-Control": "no-store" } }
     );
   }
-  let sessionEmail = "";
-  try {
-    sessionEmail = Buffer.from(token, "base64").toString("utf8").split(":")[0];
-  } catch {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
-  }
+  const sessionEmail = getAdminSessionEmail(token);
   if (!sessionEmail) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
-  const admin = isSupabaseConfigured()
-    ? await getSupabaseAdminUser(sessionEmail)
-    : await getAdminByEmail(sessionEmail);
-  if (!admin) {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
-  }
-  const adminName = admin?.name || "Admin";
   return NextResponse.json(
-    { authenticated: true, adminName },
+    { authenticated: true, adminName: sessionEmail.split("@")[0] || "Admin" },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

@@ -43,6 +43,48 @@ export function verifyAdminPassword(password: string, storedHash: string) {
   return expected.length === actual.length && crypto.timingSafeEqual(expected, actual);
 }
 
+function sessionSecret() {
+  return (
+    process.env.ADMIN_SESSION_SECRET ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    "asrt-local-session-secret"
+  );
+}
+
+export function createAdminSessionToken(email: string) {
+  const payload = `${email}:${Date.now()}`;
+  const signature = crypto
+    .createHmac("sha256", sessionSecret())
+    .update(payload)
+    .digest("hex");
+  return Buffer.from(`${payload}:${signature}`).toString("base64url");
+}
+
+export function getAdminSessionEmail(token: string) {
+  try {
+    const decoded = Buffer.from(token, "base64url").toString("utf8");
+    const separator = decoded.lastIndexOf(":");
+    const payload = decoded.slice(0, separator);
+    const signature = decoded.slice(separator + 1);
+    const expected = crypto
+      .createHmac("sha256", sessionSecret())
+      .update(payload)
+      .digest("hex");
+    if (!signature || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+      return null;
+    }
+    const payloadSeparator = payload.lastIndexOf(":");
+    const email = payload.slice(0, payloadSeparator);
+    const createdAt = Number(payload.slice(payloadSeparator + 1));
+    if (!email || !Number.isFinite(createdAt) || Date.now() - createdAt > 86400000) {
+      return null;
+    }
+    return email;
+  } catch {
+    return null;
+  }
+}
+
 export async function upgradeAdminPassword(id: string, password: string) {
   const { error } = await getSupabaseAdmin()
     .from("admins")
