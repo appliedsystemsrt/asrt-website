@@ -49,18 +49,14 @@ export async function POST(req: NextRequest) {
       from: email,
     });
 
-    // Save to .env.local
-    const envPath = path.join(process.cwd(), ".env.local");
-    let envContent = "";
-
-    if (fs.existsSync(envPath)) {
-      envContent = fs.readFileSync(envPath, "utf-8");
-    }
-
-    // Remove existing SMTP variables if any
-    const envLines = envContent
-      .split("\n")
-      .filter(
+    // Vercel has a read-only filesystem. Configure SMTP_USER, SMTP_PASS, and
+    // SMTP_FROM in Vercel Environment Variables instead of writing .env.local.
+    if (!process.env.VERCEL) {
+      const envPath = path.join(process.cwd(), ".env.local");
+      let envContent = fs.existsSync(envPath)
+        ? fs.readFileSync(envPath, "utf-8")
+        : "";
+      const envLines = envContent.split("\n").filter(
         (line) =>
           !line.startsWith("SMTP_HOST=") &&
           !line.startsWith("SMTP_PORT=") &&
@@ -68,19 +64,17 @@ export async function POST(req: NextRequest) {
           !line.startsWith("SMTP_PASS=") &&
           !line.startsWith("SMTP_FROM=")
       );
-
-    // Add new SMTP variables
-    envLines.push(
-      "",
-      "# Email Configuration (Gmail SMTP)",
-      "SMTP_HOST=smtp.gmail.com",
-      "SMTP_PORT=587",
-      `SMTP_USER=${email}`,
-      `SMTP_PASS=${cleanPassword}`,
-      `SMTP_FROM=${email}`
-    );
-
-    fs.writeFileSync(envPath, envLines.join("\n"), "utf-8");
+      envLines.push(
+        "",
+        "# Email Configuration (Gmail SMTP)",
+        "SMTP_HOST=smtp.gmail.com",
+        "SMTP_PORT=587",
+        `SMTP_USER=${email}`,
+        `SMTP_PASS=${cleanPassword}`,
+        `SMTP_FROM=${email}`
+      );
+      fs.writeFileSync(envPath, envLines.join("\n"), "utf-8");
+    }
 
     return NextResponse.json({
       success: true,
