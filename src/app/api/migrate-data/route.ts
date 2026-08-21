@@ -4,7 +4,7 @@ import { isSupabaseConfigured, getSupabaseAdmin } from "@/lib/supabase";
 /**
  * POST /api/migrate-data
  * Migrates local JSON data files into Supabase.
- * Run once after switching from local storage to Supabase.
+ * Also fixes default team member images that were seeded with empty image fields.
  */
 export async function POST(req: NextRequest) {
   // Auth check
@@ -21,10 +21,43 @@ export async function POST(req: NextRequest) {
   }
 
   const supabase = getSupabaseAdmin();
-  const results: Record<string, { imported: number; skipped: number; errors: string[] }> = {};
+  const results: Record<string, { imported: number; skipped: number; fixed: number; errors: string[] }> = {};
 
   try {
-    // Import teams
+    // ─── Fix default team member images ───
+    let teamsFixed = 0;
+    const imageMap: Record<string, string> = {
+      "dr. anandhi": "/dr-anandhi.png",
+      "dr. anasuya devi": "/dr-anasuya-devi.png",
+    };
+
+    try {
+      const { data: allTeams } = await supabase
+        .from("teams")
+        .select("id, name, metadata");
+
+      for (const team of allTeams || []) {
+        const lowerName = (team.name || "").toLowerCase();
+        const defaultImage = imageMap[lowerName];
+        if (defaultImage) {
+          const currentImage = team.metadata?.image;
+          if (!currentImage || currentImage.trim() === "") {
+            const { error } = await supabase
+              .from("teams")
+              .update({
+                metadata: { ...team.metadata, image: defaultImage },
+              })
+              .eq("id", team.id);
+            if (!error) teamsFixed++;
+          }
+        }
+      }
+    } catch (e: any) {
+      console.error("[Migration] Fix team images error:", e);
+    }
+    results.teams = { imported: 0, skipped: 0, fixed: teamsFixed, errors: [] };
+
+    // ─── Import teams ───
     const { data: existingTeams } = await supabase
       .from("teams")
       .select("name");
@@ -60,9 +93,9 @@ export async function POST(req: NextRequest) {
     } catch (e: any) {
       teamsErrors.push(e.message);
     }
-    results.teams = { imported: teamsImported, skipped: teamsSkipped, errors: teamsErrors };
+    results.teams = { imported: teamsImported, skipped: teamsSkipped, fixed: teamsFixed, errors: teamsErrors };
 
-    // Import blogs
+    // ─── Import blogs ───
     const { data: existingBlogs } = await supabase
       .from("blogs")
       .select("title");
@@ -112,9 +145,9 @@ export async function POST(req: NextRequest) {
     } catch (e: any) {
       blogsErrors.push(e.message);
     }
-    results.blogs = { imported: blogsImported, skipped: blogsSkipped, errors: blogsErrors };
+    results.blogs = { imported: blogsImported, skipped: blogsSkipped, fixed: 0, errors: blogsErrors };
 
-    // Import communications
+    // ─── Import communications ───
     const { data: existingComms } = await supabase
       .from("communications")
       .select("email,created_at");
@@ -166,10 +199,11 @@ export async function POST(req: NextRequest) {
     results.communications = {
       imported: commsImported,
       skipped: commsSkipped,
+      fixed: 0,
       errors: commsErrors,
     };
 
-    // Import replies
+    // ─── Import replies ───
     const { data: existingReplies } = await supabase
       .from("replies")
       .select("metadata");
@@ -213,10 +247,11 @@ export async function POST(req: NextRequest) {
     results.replies = {
       imported: repliesImported,
       skipped: repliesSkipped,
+      fixed: 0,
       errors: repliesErrors,
     };
 
-    // Import products
+    // ─── Import products ───
     const { data: existingProducts } = await supabase
       .from("products")
       .select("slug");
@@ -255,6 +290,7 @@ export async function POST(req: NextRequest) {
     results.products = {
       imported: productsImported,
       skipped: productsSkipped,
+      fixed: 0,
       errors: productsErrors,
     };
 

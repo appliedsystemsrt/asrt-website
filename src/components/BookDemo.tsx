@@ -19,15 +19,31 @@ export default function BookDemo({ open, onClose }: BookDemoProps) {
   });
   const [submitted, setSubmitted] = useState(false);
 
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState(false);
+
   const handleSubmit = async () => {
     if (!form.name.trim() || !form.email.trim()) return;
-    setSubmitted(true);
-    // Send email notification to admin (fire and forget)
-    fetch("/api/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "demo", data: form }),
-    });
+    setSending(true);
+    setSendError(false);
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "demo", data: form }),
+      });
+      const data = await res.json();
+      if (res.ok || data.success) {
+        setSubmitted(true);
+      } else {
+        setSendError(true);
+        setSubmitted(false);
+      }
+    } catch {
+      setSendError(true);
+      setSubmitted(false);
+    }
+    setSending(false);
   };
 
   const reset = () => {
@@ -200,11 +216,24 @@ export default function BookDemo({ open, onClose }: BookDemoProps) {
 
                   <button
                     onClick={handleSubmit}
-                    disabled={!form.name.trim() || !form.email.trim()}
+                    disabled={!form.name.trim() || !form.email.trim() || sending}
                     className="w-full py-3 px-6 bg-[#E66800] hover:bg-[#FF7200] disabled:bg-[#E66800]/30 disabled:text-white/30 text-white font-medium rounded-xl transition-all hover:shadow-lg hover:shadow-[#FF7200]/20 flex items-center justify-center gap-2"
                   >
-                    Book My Demo <span>→</span>
+                    {sending ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Sending...</span>
+                      </>
+                    ) : (
+                      <>Book My Demo <span>→</span></>
+                    )}
                   </button>
+
+                  {sendError && (
+                    <p className="text-xs text-red-400 text-center">
+                      Failed to send. Please check your connection and try again.
+                    </p>
+                  )}
 
                   <p className="text-[10px] text-white/20 text-center">
                     No spam. We&apos;ll only use your info to schedule the demo.

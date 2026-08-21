@@ -1,20 +1,105 @@
+-- ============================================================
+-- ASRT Website — Full Supabase schema
 -- Run once in Supabase SQL Editor.
--- These compatibility columns preserve the fields used by the existing ASRT admin UI.
-alter table public.teams add column if not exists metadata jsonb not null default '{}'::jsonb;
-alter table public.communications add column if not exists metadata jsonb not null default '{}'::jsonb;
-alter table public.replies add column if not exists metadata jsonb not null default '{}'::jsonb;
+-- ============================================================
 
--- Create a public bucket for website uploads used by product/blog content.
-insert into storage.buckets (id, name, public)
-values ('uploads', 'uploads', true)
-on conflict (id) do update set public = true;
+-- 1. teams ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.teams (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name        text NOT NULL,
+  slug        text NOT NULL UNIQUE,
+  description text DEFAULT '',
+  metadata    jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
 
-do $$
-begin
-	if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Public uploads are readable') then
-		create policy "Public uploads are readable" on storage.objects for select using (bucket_id = 'uploads');
-	end if;
-	if not exists (select 1 from pg_policies where schemaname = 'storage' and tablename = 'objects' and policyname = 'Server uploads are writable') then
-		create policy "Server uploads are writable" on storage.objects for insert with check (bucket_id = 'uploads');
-	end if;
-end $$;
+-- 2. products ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.products (
+  id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name        text NOT NULL,
+  slug        text NOT NULL UNIQUE,
+  description text DEFAULT '',
+  metadata    jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now()
+);
+
+-- 3. blogs ──────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.blogs (
+  id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  title            text NOT NULL,
+  slug             text NOT NULL UNIQUE,
+  excerpt          text DEFAULT '',
+  content          text DEFAULT '',
+  cover_image_url  text DEFAULT '',
+  status           text DEFAULT 'published',
+  metadata         jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at       timestamptz NOT NULL DEFAULT now(),
+  updated_at       timestamptz NOT NULL DEFAULT now()
+);
+
+-- 4. communications ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.communications (
+  id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name       text DEFAULT '',
+  email      text DEFAULT '',
+  phone      text DEFAULT '',
+  company    text DEFAULT '',
+  city       text DEFAULT '',
+  interest   text DEFAULT '',
+  message    text DEFAULT '',
+  read       boolean DEFAULT false,
+  metadata   jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 5. replies ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.replies (
+  id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  metadata   jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- 6. admins ────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.admins (
+  id            bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  name          text DEFAULT '',
+  email         text NOT NULL UNIQUE,
+  password_hash text DEFAULT '',
+  created_at    timestamptz NOT NULL DEFAULT now(),
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+
+-- 7. smtp_settings ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS public.smtp_settings (
+  id                 bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  host               text DEFAULT '',
+  port               integer DEFAULT 587,
+  username           text DEFAULT '',
+  password_encrypted text DEFAULT '',
+  from_email         text DEFAULT '',
+  status             text DEFAULT 'active',
+  created_at         timestamptz NOT NULL DEFAULT now(),
+  updated_at         timestamptz NOT NULL DEFAULT now()
+);
+
+-- Add metadata columns if they don't exist (for pre-existing tables)
+ALTER TABLE public.teams           ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.communications ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.replies         ADD COLUMN IF NOT EXISTS metadata jsonb NOT NULL DEFAULT '{}'::jsonb;
+
+-- Storage bucket ───────────────────────────────────────────
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('uploads', 'uploads', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Public uploads are readable') THEN
+    CREATE POLICY "Public uploads are readable" ON storage.objects FOR SELECT USING (bucket_id = 'uploads');
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'storage' AND tablename = 'objects' AND policyname = 'Server uploads are writable') THEN
+    CREATE POLICY "Server uploads are writable" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'uploads');
+  END IF;
+END $$;

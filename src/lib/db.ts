@@ -161,7 +161,7 @@ const DEFAULT_TEAMS: TeamMember[] = [
     name: "Dr. Anandhi",
     role: "Founder & Research Director",
     bio: "Leading applied AI research with a focus on bridging academic innovation and real-world systems.",
-    image: "",
+    image: "/dr-anandhi.png",
     createdAt: new Date().toISOString(),
   },
   {
@@ -169,7 +169,7 @@ const DEFAULT_TEAMS: TeamMember[] = [
     name: "Dr. Anasuya Devi",
     role: "Head of AI & Machine Learning",
     bio: "Specializing in machine learning architectures and generative AI systems for complex engineering challenges.",
-    image: "",
+    image: "/dr-anasuya-devi.png",
     createdAt: new Date().toISOString(),
   },
 ];
