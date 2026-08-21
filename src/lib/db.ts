@@ -48,8 +48,19 @@ function isTableMissingError(error: any): boolean {
     msg.includes("does not exist") ||
     msg.includes("relation \"public.") ||
     msg.includes("not found") ||
-    error.code === "42P01"
+    error.code === "42P01" // undefined_table
   );
+}
+
+/** True if the error is a PostgREST schema cache issue (column not in cache) */
+function isSchemaCacheError(error: any): boolean {
+  if (!error) return false;
+  return error.code === "PGRST204" || (error.message || "").includes("PGRST204");
+}
+
+/** Reset the Supabase ready cache so next probe re-checks */
+export function resetSupabaseCache() {
+  _supabaseReady = null;
 }
 
 function ensureDataDir() {
@@ -569,13 +580,21 @@ export async function addCommunication(
       })
       .select()
       .single();
-    if (error) throw error;
-    return {
-      ...comm,
-      id: String(data.id),
-      createdAt: data.created_at,
-      read: false,
-    };
+    if (error) {
+      if (isSchemaCacheError(error) || isTableMissingError(error)) {
+        console.warn("[DB] Supabase insert failed (schema cache), falling back to local JSON");
+        _supabaseReady = null;
+      } else {
+        throw error;
+      }
+    } else {
+      return {
+        ...comm,
+        id: String(data.id),
+        createdAt: data.created_at,
+        read: false,
+      };
+    }
   }
   const comms = await getCommunications();
   const newComm: Communication = {
@@ -641,44 +660,53 @@ export async function addSubscriber(
   sub: Omit<Subscriber, "id" | "createdAt">
 ): Promise<Subscriber> {
   if (await isSupabaseReady()) {
-    const { data: existing } = await getSupabaseAdmin()
-      .from("communications")
-      .select("id")
-      .eq("email", sub.email)
-      .limit(1)
-      .maybeSingle();
-    if (existing) {
-      await getSupabaseAdmin()
+    try {
+      const { data: existing } = await getSupabaseAdmin()
         .from("communications")
-        .update({
+        .select("id")
+        .eq("email", sub.email)
+        .limit(1)
+        .maybeSingle();
+      if (existing) {
+        await getSupabaseAdmin()
+          .from("communications")
+          .update({
+            metadata: {
+              subscribeNewsletters: sub.subscribeNewsletters,
+              subscribeArticles: sub.subscribeArticles,
+              subscribeBlogs: sub.subscribeBlogs,
+            },
+          })
+          .eq("id", existing.id);
+        return { ...sub, id: String(existing.id), createdAt: new Date().toISOString() };
+      }
+      const { data, error } = await getSupabaseAdmin()
+        .from("communications")
+        .insert({
+          name: sub.name,
+          email: sub.email,
+          phone: sub.phone,
+          city: sub.city,
+          message: "Newsletter subscriber",
+          read: false,
           metadata: {
             subscribeNewsletters: sub.subscribeNewsletters,
             subscribeArticles: sub.subscribeArticles,
             subscribeBlogs: sub.subscribeBlogs,
           },
         })
-        .eq("id", existing.id);
-      return { ...sub, id: String(existing.id), createdAt: new Date().toISOString() };
+        .select()
+        .single();
+      if (error) throw error;
+      return { ...sub, id: String(data.id), createdAt: data.created_at };
+    } catch (e: any) {
+      if (isSchemaCacheError(e) || isTableMissingError(e)) {
+        console.warn("[DB] Subscriber insert failed (schema cache), falling back to local JSON");
+        _supabaseReady = null;
+      } else {
+        throw e;
+      }
     }
-    const { data, error } = await getSupabaseAdmin()
-      .from("communications")
-      .insert({
-        name: sub.name,
-        email: sub.email,
-        phone: sub.phone,
-        city: sub.city,
-        message: "Newsletter subscriber",
-        read: false,
-        metadata: {
-          subscribeNewsletters: sub.subscribeNewsletters,
-          subscribeArticles: sub.subscribeArticles,
-          subscribeBlogs: sub.subscribeBlogs,
-        },
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return { ...sub, id: String(data.id), createdAt: data.created_at };
   }
   const subs = readJSON<Subscriber[]>("subscribers.json", []);
   const existing = subs.find(
@@ -796,8 +824,16 @@ export async function addDemoRequest(
       })
       .select()
       .single();
-    if (error) throw error;
-    return { ...req, id: String(data.id), createdAt: data.created_at };
+    if (error) {
+      if (isSchemaCacheError(error) || isTableMissingError(error)) {
+        console.warn("[DB] Supabase demo insert failed (schema cache), falling back to local JSON");
+        _supabaseReady = null;
+      } else {
+        throw error;
+      }
+    } else {
+      return { ...req, id: String(data.id), createdAt: data.created_at };
+    }
   }
   const reqs = readJSON<DemoRequest[]>("demos.json", []);
   const newReq: DemoRequest = {
