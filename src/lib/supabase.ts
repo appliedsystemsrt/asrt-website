@@ -151,3 +151,16 @@ export async function saveSupabaseSmtpConfig(config: {
     : await supabase.from("smtp_settings").insert(values);
   if (result.error) throw result.error;
 }
+
+export async function getSupabaseSmtpConfig() {
+  const { data, error } = await getSupabaseAdmin()
+    .from("smtp_settings")
+    .select("username,from_email,status")
+    .eq("status", "active")
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data
+    ? { user: data.username || "", from: data.from_email || "" }
+    : null;
+}

@@ -3,6 +3,11 @@ import nodemailer from "nodemailer";
 import fs from "fs";
 import path from "path";
 import { saveSmtpConfig } from "@/lib/db";
+import {
+  getSupabaseSmtpConfig,
+  isSupabaseConfigured,
+  saveSupabaseSmtpConfig,
+} from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   try {
@@ -40,14 +45,20 @@ export async function POST(req: NextRequest) {
     // Verify connection
     await transporter.verify();
 
-    // Save to database
-    saveSmtpConfig({
+    const smtpConfig = {
       host: "smtp.gmail.com",
       port: 587,
       user: email,
       pass: cleanPassword,
       from: email,
-    });
+    };
+
+    // Vercel uses Supabase because its filesystem is read-only.
+    if (isSupabaseConfigured()) {
+      await saveSupabaseSmtpConfig(smtpConfig);
+    } else {
+      saveSmtpConfig(smtpConfig);
+    }
 
     // Vercel has a read-only filesystem. Configure SMTP_USER, SMTP_PASS, and
     // SMTP_FROM in Vercel Environment Variables instead of writing .env.local.
@@ -98,12 +109,23 @@ export async function POST(req: NextRequest) {
         "Invalid login credentials. Please verify your Gmail address and app password are correct.";
     }
 
-    return NextResponse.json({ error: errorMessage }, { status: 500 });
+    const detail = typeof error?.message === "string" ? error.message : "";
+    return NextResponse.json(
+      { error: detail ? `${errorMessage}: ${detail}` : errorMessage },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET() {
   try {
+    if (isSupabaseConfigured()) {
+      const config = await getSupabaseSmtpConfig();
+      return NextResponse.json({
+        configured: Boolean(config?.user),
+        email: config?.user || null,
+      });
+    }
     const { getSmtpConfig } = await import("@/lib/db");
     const config = getSmtpConfig();
 
