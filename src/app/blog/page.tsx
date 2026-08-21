@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import Navigation from "@/components/Navigation";
@@ -22,7 +22,7 @@ interface Blog {
   updatedAt: string;
 }
 
-export default function BlogPage() {
+function BlogPageContent() {
   const [blogs, setBlogs] = useState<Blog[]>([]);
   const [loading, setLoading] = useState(true);
   const [activePost, setActivePost] = useState<Blog | null>(null);
@@ -403,5 +403,13 @@ export default function BlogPage() {
 
       <Footer />
     </>
+  );
+}
+
+export default function BlogPage() {
+  return (
+    <Suspense fallback={<LoadingScreen label="Loading insights" />}>
+      <BlogPageContent />
+    </Suspense>
   );
 }
