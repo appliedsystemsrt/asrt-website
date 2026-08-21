@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAdmin } from "@/lib/db";
+import {
+  getSupabaseAdminUser,
+  isSupabaseConfigured,
+  verifyAdminPassword,
+} from "@/lib/supabase";
 
 const FALLBACK_EMAIL = "iitrmit@gmail.com";
 const FALLBACK_PASSWORD = "admin123";
@@ -22,34 +27,49 @@ export async function POST(req: NextRequest) {
     return response;
   }
 
-  // Check registered admin
-  const admin = getAdmin();
-  if (admin && admin.email === email) {
-    // For manual registration, check password
-    if (admin.authMethod === "manual" && admin.password !== password) {
-      return NextResponse.json(
-        { success: false, error: "Invalid password" },
-        { status: 401 }
-      );
+  // Check the deployed Supabase admin when configured, otherwise use local JSON.
+  if (isSupabaseConfigured()) {
+    const admin = await getSupabaseAdminUser();
+    if (admin && admin.email === email) {
+      const passwordValid = verifyAdminPassword(password, admin.password_hash);
+      if (!passwordValid) {
+        return NextResponse.json(
+          { success: false, error: "Invalid password" },
+          { status: 401 }
+        );
+      }
+      const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
+      const response = NextResponse.json({ success: true, token });
+      response.cookies.set("admin-token", token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+        maxAge: 86400,
+        path: "/",
+      });
+      return response;
     }
-    // For Google auth, any password works (in production, verify via OAuth)
-    if (admin.authMethod === "google" && password !== admin.password && password !== FALLBACK_PASSWORD) {
-      return NextResponse.json(
-        { success: false, error: "Invalid credentials" },
-        { status: 401 }
-      );
+  } else {
+    const admin = await getAdmin();
+    if (admin && admin.email === email) {
+      const passwordValid = admin.password === password;
+      if (!passwordValid) {
+        return NextResponse.json(
+          { success: false, error: "Invalid password" },
+          { status: 401 }
+        );
+      }
+      const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
+      const response = NextResponse.json({ success: true, token });
+      response.cookies.set("admin-token", token, {
+        httpOnly: true,
+        secure: false,
+        sameSite: "lax",
+        maxAge: 86400,
+        path: "/",
+      });
+      return response;
     }
-
-    const token = Buffer.from(`${email}:${Date.now()}`).toString("base64");
-    const response = NextResponse.json({ success: true, token });
-    response.cookies.set("admin-token", token, {
-      httpOnly: true,
-      secure: false,
-      sameSite: "lax",
-      maxAge: 86400,
-      path: "/",
-    });
-    return response;
   }
 
   return NextResponse.json(
@@ -64,7 +84,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
   // Try to get admin name from stored admin
-  const admin = getAdmin();
+  const admin = isSupabaseConfigured()
+    ? await getSupabaseAdminUser()
+    : await getAdmin();
   const adminName = admin?.name || "Admin";
   return NextResponse.json({ authenticated: true, adminName });
 }

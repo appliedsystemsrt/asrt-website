@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { registerAdmin, getAdmin } from "@/lib/db";
 import { sendWelcomeAdminEmail } from "@/lib/email";
+import {
+  getSupabaseAdminUser,
+  isSupabaseConfigured,
+  registerSupabaseAdmin,
+} from "@/lib/supabase";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -14,7 +19,9 @@ export async function POST(req: NextRequest) {
   }
 
   // Check if admin already registered
-  const existing = getAdmin();
+  const existing = isSupabaseConfigured()
+    ? await getSupabaseAdminUser()
+    : getAdmin();
   if (existing) {
     return NextResponse.json(
       { error: "An admin account already exists. Only one admin is allowed in this testing environment." },
@@ -23,12 +30,18 @@ export async function POST(req: NextRequest) {
   }
 
   // Register admin
-  const admin = registerAdmin({
-    name,
-    email,
-    password: password || "",
-    authMethod: authMethod || "manual",
-  });
+  const admin = isSupabaseConfigured()
+    ? await registerSupabaseAdmin({
+        name,
+        email,
+        password: password || "",
+      })
+    : registerAdmin({
+        name,
+        email,
+        password: password || "",
+        authMethod: authMethod || "manual",
+      });
 
   // Send welcome email
   const emailResult = await sendWelcomeAdminEmail(admin.email, admin.name);
@@ -41,12 +54,21 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET() {
-  const admin = getAdmin();
+  const admin = isSupabaseConfigured()
+    ? await getSupabaseAdminUser()
+    : getAdmin();
   if (!admin) {
     return NextResponse.json({ registered: false });
   }
   return NextResponse.json({
     registered: true,
-    admin: { id: admin.id, name: admin.name, email: admin.email, authMethod: admin.authMethod },
+    admin: {
+      id: admin.id,
+      name: admin.name,
+      email: admin.email,
+      authMethod: isSupabaseConfigured()
+        ? "manual"
+        : ((admin as { authMethod?: "manual" | "google" }).authMethod || "manual"),
+    },
   });
 }
