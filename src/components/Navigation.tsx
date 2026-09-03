@@ -67,7 +67,7 @@ export default function Navigation() {
       >
         <div className="flex items-center justify-between">
           <Link href="/" className="hidden sm:flex items-center gap-2 mr-4 shrink-0" aria-label="ASRT home">
-            <img src="/brand-logo.jpeg" alt="ASRT" className="w-9 h-9 object-contain" />
+            <img src="/brand-logo.png" alt="ASRT" className="w-12 h-12 object-contain" />
             <span className="text-xs font-mono tracking-[0.2em] text-white/60">ASRT</span>
           </Link>
           {/* Desktop nav — left side */}

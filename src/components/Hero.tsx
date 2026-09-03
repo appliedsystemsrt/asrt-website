@@ -642,6 +642,44 @@ export default function Hero() {
 
           {/* ─── LEFT: Company name + content ─── */}
           <div>
+            {/* Full-size 3D Logo */}
+            <motion.div
+              className="mb-8"
+              initial={{ opacity: 0, y: 30, rotateX: 15 }}
+              animate={loadStage >= 1 ? { opacity: 1, y: 0, rotateX: 0 } : {}}
+              transition={{ duration: 1, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <div
+                className="inline-block relative"
+                style={{ perspective: "800px" }}
+              >
+                <motion.img
+                  src="/brand-logo.png"
+                  alt="ASRT"
+                  className="w-36 h-36 sm:w-44 sm:h-44 md:w-52 md:h-52 object-contain"
+                  style={{
+                    filter: "drop-shadow(0 8px 24px rgba(255, 114, 0, 0.25)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5))",
+                    transform: "perspective(800px) rotateY(-5deg) rotateX(3deg)",
+                  }}
+                  animate={{
+                    filter: [
+                      "drop-shadow(0 8px 24px rgba(255, 114, 0, 0.25)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5))",
+                      "drop-shadow(0 12px 32px rgba(255, 114, 0, 0.35)) drop-shadow(0 4px 12px rgba(0, 0, 0, 0.6))",
+                      "drop-shadow(0 8px 24px rgba(255, 114, 0, 0.25)) drop-shadow(0 2px 8px rgba(0, 0, 0, 0.5))",
+                    ],
+                  }}
+                  transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                />
+                {/* Glow ring behind logo */}
+                <div
+                  className="absolute inset-0 -m-4 rounded-full pointer-events-none"
+                  style={{
+                    background: "radial-gradient(circle, rgba(255, 114, 0, 0.08) 0%, transparent 70%)",
+                  }}
+                />
+              </div>
+            </motion.div>
+
             <motion.div
               className="inline-flex items-center gap-2.5 mb-8"
               initial={{ opacity: 0, x: -20 }}

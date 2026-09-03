@@ -12,9 +12,9 @@ export default function LoadingScreen({ label = "Loading" }: { label?: string })
         transition={{ duration: 0.35 }}
       >
         <motion.img
-          src="/brand-logo.jpeg"
+          src="/brand-logo.png"
           alt="ASRT"
-          className="w-16 h-16 object-contain"
+          className="w-24 h-24 object-contain"
           animate={{ opacity: [0.55, 1, 0.55] }}
           transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
         />

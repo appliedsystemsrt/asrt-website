@@ -36,9 +36,9 @@ function LoadingScreen({ onComplete }: { onComplete: () => void }) {
         className="text-center relative z-10"
       >
         <motion.img
-          src="/brand-logo.jpeg"
+          src="/brand-logo.png"
           alt="ASRT"
-          className="w-20 h-20 object-contain mx-auto mb-6"
+          className="w-28 h-28 object-contain mx-auto mb-6"
           animate={{ opacity: [0.55, 1, 0.55] }}
           transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
         />

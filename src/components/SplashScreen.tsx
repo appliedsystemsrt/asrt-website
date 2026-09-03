@@ -84,7 +84,7 @@ export default function SplashScreen() {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
             >
-              <img src="/brand-logo.jpeg" alt="ASRT" className="w-20 h-20 object-contain" />
+              <img src="/brand-logo.png" alt="ASRT" className="w-28 h-28 object-contain" />
             </motion.div>
 
             {/* Company name */}

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description:
     "Applied Systems Research & Technology (OPC) Pvt Ltd — an applied AI research company that turns difficult problems into engineered systems.",
   icons: {
-    icon: [{ url: "/brand-logo.jpeg", type: "image/jpeg" }],
+    icon: [{ url: "/brand-logo.png", type: "image/png" }],
   },
   keywords: [
     "Applied System Research Technology",

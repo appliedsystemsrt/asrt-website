@@ -5,13 +5,23 @@ import { isSupabaseConfigured, getSupabaseAdmin } from "./supabase";
 
 const COMPANY_NAME = "Applied Systems Research and Technology OPC Private Ltd";
 const LOGO_CID = "asrt-brand-logo";
-const LOGO_PATH = path.join(process.cwd(), "public", "brand-logo.jpeg");
+const LOGO_PATH = path.join(process.cwd(), "public", "brand-logo.png");
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://appliedaiml.com";
 
 function emailLogo() {
-  // Use public URL for reliable inline display across email clients
-  const logoUrl = `${SITE_URL}/brand-logo.jpeg`;
-  return `<img src="${logoUrl}" alt="${COMPANY_NAME}" width="64" height="64" style="display:block;width:64px;height:64px;object-fit:contain;margin:0 auto;border-radius:8px;" />`;
+  // Use CID inline attachment — guarantees the logo renders in all email clients
+  return `<img src="cid:${LOGO_CID}" alt="${COMPANY_NAME}" width="120" height="120" style="display:block;width:120px;height:120px;object-fit:contain;margin:0 auto;border-radius:10px;" />`;
+}
+
+/** Returns the logo file as a nodemailer inline attachment (CID). */
+function logoAttachment(): nodemailer.SendMailOptions["attachments"] {
+  try {
+    const fs = require("fs");
+    if (fs.existsSync(LOGO_PATH)) {
+      return [{ filename: "brand-logo.png", path: LOGO_PATH, cid: LOGO_CID }];
+    }
+  } catch { /* ignore */ }
+  return [];
 }
 
 let _cachedSmtp: { host: string; port: number; user: string; pass: string; from: string } | null = null;
@@ -139,6 +149,7 @@ async function sendMail(to: string, subject: string, html: string) {
       to,
       subject,
       html,
+      attachments: logoAttachment(),
     });
     console.log("[Email] Sent to:", to, "Subject:", subject);
     return { success: true };

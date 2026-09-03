@@ -192,7 +192,7 @@ export default function AdminLayout({
       >
         {/* Logo */}
         <div className="h-16 flex items-center gap-3 px-5 border-b border-white/5">
-          <img src="/brand-logo.jpeg" alt="ASRT" className="w-9 h-9 object-contain" />
+          <img src="/brand-logo.png" alt="ASRT" className="w-12 h-12 object-contain" />
           <div>
             <p className="text-sm font-semibold text-white/80">ASRT Admin</p>
             <p className="text-[10px] text-white/30 font-mono">CONTROL PANEL</p>
