@@ -335,6 +335,42 @@ export async function deleteTeam(id: string): Promise<boolean> {
   return true;
 }
 
+export async function updateTeam(
+  id: string,
+  member: Omit<TeamMember, "id" | "createdAt">
+): Promise<TeamMember | null> {
+  if (await isSupabaseReady()) {
+    const { data, error } = await getSupabaseAdmin()
+      .from("teams")
+      .update({
+        name: member.name,
+        description: member.bio,
+        metadata: { role: member.role, bio: member.bio, image: member.image },
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    return {
+      ...member,
+      id: String(data.id),
+      createdAt: data.created_at,
+    };
+  }
+  const teams = await getTeams();
+  const index = teams.findIndex((t) => t.id === id);
+  if (index === -1) return null;
+  const updated: TeamMember = {
+    ...member,
+    id,
+    createdAt: teams[index].createdAt,
+  };
+  teams[index] = updated;
+  saveTeams(teams);
+  return updated;
+}
+
 // ─── Products ───
 
 export async function getProducts(): Promise<Product[]> {
